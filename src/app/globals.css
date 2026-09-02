@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+/* ===========================================================================
+   ROOTS design system
+   ---------------------------------------------------------------------------
+   Warm, quiet and physical: the palette comes from old paper, sepia prints and
+   lamplight rather than from a SaaS dashboard. Nothing here is pure white or
+   pure black, because nothing in a family photograph is either.
+
+   Typography pairs a serif for names and headings — a family's names deserve
+   the weight of print — with a system sans for interface text. Both are local
+   font stacks: an archive must open on a bad connection in a ger in Khövsgöl,
+   and a webfont round trip is not worth a name rendering late.
+   =========================================================================== */
+
+@theme {
+  --font-display: ui-serif, Georgia, 'Times New Roman', 'Noto Serif', serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Roboto, Arial, sans-serif;
+
+  /* Warm neutrals — aged paper */
+  --color-parchment: #f7f2ea;
+  --color-parchment-deep: #efe6d9;
+  --color-surface: #fffdfa;
+  --color-ink: #1d1815;
+  --color-ink-soft: #4a4038;
+  --color-muted: #7a6d60;
+  --color-line: #e2d7c7;
+
+  /* Accents — terracotta, lamplight gold, steppe sage */
+  --color-ember: #a8462a;
+  --color-ember-soft: #c9694a;
+  --color-ember-wash: #f6e7e0;
+  --color-gold: #b8873a;
+  --color-gold-wash: #f7efdd;
+  --color-sage: #5f7360;
+  --color-sage-wash: #e9efe8;
+
+  /* Semantic */
+  --color-danger: #a32e28;
+  --color-danger-wash: #f8e6e4;
+
+  --radius-card: 1.125rem;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 1px 2px rgb(29 24 21 / 0.05), 0 8px 24px -12px rgb(29 24 21 / 0.18);
+  --shadow-lift: 0 2px 6px rgb(29 24 21 / 0.07), 0 18px 40px -20px rgb(29 24 21 / 0.32);
+}
+
+/* Dark mode is not an inversion — it is the same archive by lamplight.
+   Tailwind v4 emits @theme values as custom properties on :root and references
+   them from the utilities, so overriding the same properties in a media query
+   re-themes every utility at once. @theme itself cannot be nested in a media
+   query, which is why this block is plain CSS. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-parchment: #17130f;
+    --color-parchment-deep: #100d0a;
+    --color-surface: #221c17;
+    --color-ink: #f2e9dc;
+    --color-ink-soft: #d8cabb;
+    --color-muted: #a0917f;
+    --color-line: #382e26;
+
+    --color-ember: #d9714f;
+    --color-ember-soft: #b0563a;
+    --color-ember-wash: #33201a;
+    --color-gold: #d3a35f;
+    --color-gold-wash: #2e2517;
+    --color-sage: #8fa78f;
+    --color-sage-wash: #1e2620;
+
+    --color-danger: #e0736c;
+    --color-danger-wash: #331d1c;
+
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px -20px rgb(0 0 0 / 0.7);
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 15% 10%, rgb(211 163 95 / 0.06), transparent 45%),
+      radial-gradient(circle at 85% 85%, rgb(217 113 79 / 0.05), transparent 50%);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  /* Prevent iOS zooming the layout when a form field is focused. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-parchment);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  overscroll-behavior-y: none;
+  /* A faint grain so large empty areas read as paper, not as a blank screen. */
+  background-image:
+    radial-gradient(circle at 15% 10%, rgb(184 135 58 / 0.05), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgb(168 70 42 / 0.045), transparent 50%);
+  background-attachment: fixed;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+/* Respect the platform's motion preference everywhere, not per component. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* A visible focus ring is an accessibility requirement, not a style choice. */
+:focus-visible {
+  outline: 2px solid var(--color-ember);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   Utilities used across the app
+   --------------------------------------------------------------------------- */
+
+@utility card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+@utility safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* Screen-reader-only text, for icon-only controls. */
+@utility sr-only-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+@keyframes roots-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@utility fade-up {
+  animation: roots-fade-up 0.35s ease-out both;
+}
+
+@keyframes roots-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+@utility recording-pulse {
+  animation: roots-pulse 1.4s ease-in-out infinite;
+}
