@@ -3,17 +3,25 @@ import { notFound } from 'next/navigation';
 import { requireActiveFamily } from '@/lib/family-context';
 import { getMemory } from '@/lib/data/memories';
 import { getSignedUrls } from '@/lib/media/storage';
-import { AppHeader } from '@/components/nav/AppHeader';
+import { Photo, PhotoOverlay } from '@/components/ui/Photo';
+import { Display, Eyebrow, SectionLead } from '@/components/ui/Editorial';
 import { Avatar } from '@/components/ui/Avatar';
-import { Badge, ProvenanceBadge } from '@/components/ui/Badge';
-import { Card, SectionHeading } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { PhotoWall } from '@/components/media/PhotoWall';
 import { MediaAttachments } from '@/components/media/MediaAttachments';
 import { displayName, formatDate, relativeTime } from '@/lib/format';
-import { MapPinIcon } from '@/components/icons';
+import { ChevronLeftIcon } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * One memory, laid out like a page in an album rather than a record in a table.
+ *
+ * The photograph comes first at full bleed, with only a back button over it;
+ * the title, date and place follow underneath in the reading order of a printed
+ * caption. The story keeps a 62ch measure because it is prose someone told, not
+ * interface copy, and prose set to the full width of a phone is unreadable.
+ */
 export default async function MemoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const membership = await requireActiveFamily();
@@ -28,49 +36,97 @@ export default async function MemoryPage({ params }: { params: Promise<{ id: str
   const photos = media.filter((item) => item.kind === 'photo');
   const others = media.filter((item) => item.kind !== 'photo');
 
-  return (
-    <>
-      <AppHeader title={memory.title} backHref="/memories" />
+  const [cover, ...restPhotos] = photos;
+  const coverUrl = cover ? urls.get(cover.storage_path) : null;
 
-      <main id="main" className="px-4 pb-8 pt-5">
-        <div className="mb-4 flex flex-wrap items-center gap-1.5">
-          <ProvenanceBadge kind="family_memory" />
-          {memory.is_private ? <Badge tone="neutral">Хувийн</Badge> : null}
-          {location ? (
-            <Badge tone="neutral" icon={<MapPinIcon size={12} />}>{location.name}</Badge>
+  const dateLine = memory.memory_date
+    ? formatDate(memory.memory_date, memory.date_precision, locale)
+    : null;
+
+  return (
+    <main id="main" className="pb-12">
+      <section className="relative">
+        <Photo
+          src={coverUrl}
+          alt={memory.title}
+          ratio={cover ? 'hero' : 'wide'}
+          rounded={false}
+          priority
+          initial={memory.title.slice(0, 1)}
+          className="rounded-b-4xl"
+        >
+          {cover ? (
+            <PhotoOverlay className="p-6">
+              <Eyebrow className="text-white/70">
+                {[dateLine, location?.name].filter(Boolean).join(' · ') || 'Дурсамж'}
+              </Eyebrow>
+            </PhotoOverlay>
           ) : null}
-          {memory.memory_date ? (
-            <Badge tone="neutral">{formatDate(memory.memory_date, memory.date_precision, locale)}</Badge>
+        </Photo>
+
+        <Link
+          href="/memories"
+          aria-label="Буцах"
+          className="absolute left-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-md transition-colors hover:bg-black/40"
+        >
+          <ChevronLeftIcon size={19} />
+        </Link>
+      </section>
+
+      <article className="px-5">
+        <header className="mt-7">
+          {!cover ? (
+            <Eyebrow>{[dateLine, location?.name].filter(Boolean).join(' · ') || 'Дурсамж'}</Eyebrow>
           ) : null}
-        </div>
+          <Display size="lg" className="mt-2">
+            {memory.title}
+          </Display>
+          {cover ? (
+            <p className="mt-3 text-sm text-muted">
+              {[dateLine, location?.name].filter(Boolean).join(' · ')}
+            </p>
+          ) : null}
+          {memory.is_private ? (
+            <div className="mt-3">
+              <Badge tone="neutral">Зөвхөн би ба админ</Badge>
+            </div>
+          ) : null}
+        </header>
 
         {memory.description ? (
-          <p className="mb-4 text-base leading-relaxed text-ink-soft">{memory.description}</p>
-        ) : null}
-
-        {photos.length > 0 ? (
-          <section className="mb-5">
-            <PhotoWall
-              photos={photos.map((item) => ({
-                id: item.id,
-                url: urls.get(item.storage_path) ?? null,
-                caption: item.caption,
-                variant: item.variant,
-                takenAt: item.taken_at,
-              }))}
-            />
-          </section>
+          <p className="measure mt-5 text-[1.05rem] leading-[1.7] text-ink-soft">{memory.description}</p>
         ) : null}
 
         {memory.body ? (
-          <Card className="mb-5">
-            <p className="whitespace-pre-line text-[0.98rem] leading-relaxed text-ink">{memory.body}</p>
-          </Card>
+          <div className="measure mt-5 whitespace-pre-line text-[1.05rem] leading-[1.75] text-ink">
+            {memory.body}
+          </div>
+        ) : null}
+
+        {people.length > 0 ? (
+          <section className="mt-9">
+            <Eyebrow className="mb-3">Энэ дурсамжид</Eyebrow>
+            <div className="no-scrollbar -mx-5 flex gap-5 overflow-x-auto px-5">
+              {people.map((person) => (
+                <Link
+                  key={`${person.id}-${person.role}`}
+                  href={`/person/${person.id}`}
+                  className="w-18 shrink-0 text-center"
+                >
+                  <Avatar person={person} size="lg" className="mx-auto" />
+                  <span className="mt-2 block truncate text-xs text-ink">{displayName(person)}</span>
+                  <span className="block truncate text-[0.7rem] text-muted">
+                    {roleLabel(person.role)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
         ) : null}
 
         {others.length > 0 ? (
-          <section className="mb-5">
-            <SectionHeading title="Хавсаргасан файлууд" />
+          <section className="mt-9">
+            <SectionLead label="Дуу хоолой, баримт" title="Хавсралт" />
             <MediaAttachments
               items={others.map((item) => ({
                 id: item.id,
@@ -85,38 +141,31 @@ export default async function MemoryPage({ params }: { params: Promise<{ id: str
           </section>
         ) : null}
 
-        {people.length > 0 ? (
-          <section className="mb-5">
-            <SectionHeading title="Энэ дурсамжид холбогдох хүмүүс" />
-            <ul className="space-y-2">
-              {people.map((person) => (
-                <li key={`${person.id}-${person.role}`}>
-                  <Link href={`/person/${person.id}`} className="card flex items-center gap-3 p-3">
-                    <Avatar person={person} size="sm" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-ink">
-                        {displayName(person)}
-                      </span>
-                      <span className="block text-xs text-muted">{roleLabel(person.role)}</span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+        {restPhotos.length > 0 ? (
+          <section className="mt-9">
+            <SectionLead label={`${photos.length} зураг`} title="Бүх зураг" />
+            <PhotoWall
+              photos={restPhotos.map((item) => ({
+                id: item.id,
+                url: urls.get(item.storage_path) ?? null,
+                caption: item.caption,
+                variant: item.variant,
+                takenAt: item.taken_at,
+              }))}
+            />
           </section>
         ) : null}
 
         {/* Attribution is permanent: whoever gave this to the archive keeps
             their name on it, even if they later delete their account. */}
-        <Card className="border-gold/25 bg-gold-wash">
+        <footer className="mt-10 border-t border-line/70 pt-5">
           <p className="text-sm text-ink-soft">
-            Энэ дурсамжийг <strong className="font-medium text-ink">{memory.contributor_name}</strong>{' '}
-            архивт нэмсэн.
+            <span className="font-medium text-ink">{memory.contributor_name}</span> архивт нэмсэн
           </p>
           <p className="mt-0.5 text-xs text-muted">{relativeTime(memory.created_at)}</p>
-        </Card>
-      </main>
-    </>
+        </footer>
+      </article>
+    </main>
   );
 }
 

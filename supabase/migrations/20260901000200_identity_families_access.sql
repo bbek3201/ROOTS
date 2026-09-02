@@ -48,6 +48,9 @@ begin
 end;
 $$;
 
+-- auth.users survives a `drop schema public`, so this trigger must be
+-- replaceable rather than create-once.
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function roots.handle_new_user();

@@ -152,7 +152,7 @@ export function NewMemoryForm({
     <div className="space-y-4">
       <Card className="border-dashed">
         <label className="flex cursor-pointer flex-col items-center gap-2 py-4 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-ember-wash text-2xl text-ember">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-forest-wash text-2xl text-forest">
             ＋
           </span>
           <span className="font-display text-base text-ink">Зураг, бичлэг, баримт оруулах</span>
@@ -236,7 +236,7 @@ export function NewMemoryForm({
                 className={cn(
                   'rounded-pill border px-3 py-1.5 text-sm transition-colors',
                   taggedIds.includes(person.id)
-                    ? 'border-ember bg-ember text-white'
+                    ? 'border-forest bg-forest text-forest-ink'
                     : 'border-line bg-surface text-ink-soft',
                 )}
               >

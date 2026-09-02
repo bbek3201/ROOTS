@@ -292,7 +292,7 @@ export function InterviewSession({
           aria-valuemax={questions.length}
         >
           <div
-            className="h-full rounded-full bg-ember transition-[width] duration-300"
+            className="h-full rounded-full bg-forest transition-[width] duration-300"
             style={{ width: `${(answeredCount / questions.length) * 100}%` }}
           />
         </div>
@@ -302,8 +302,8 @@ export function InterviewSession({
       </div>
 
       {/* the question */}
-      <Card className="border-gold/30 bg-gold-wash">
-        <p className="text-xs font-medium uppercase tracking-wide text-gold">
+      <Card className="border-olive/30 bg-olive-wash">
+        <p className="text-xs font-medium uppercase tracking-wide text-olive">
           {subjectName}-д зориулсан асуулт
         </p>
         <p className="mt-2 font-display text-xl leading-snug text-ink">{question.text}</p>
@@ -334,7 +334,7 @@ export function InterviewSession({
               onClick={startRecording}
               disabled={busy}
               aria-label="Бичлэг эхлүүлэх"
-              className="flex h-24 w-24 items-center justify-center rounded-full bg-ember text-white disabled:opacity-50"
+              className="flex h-24 w-24 items-center justify-center rounded-full bg-forest text-forest-ink disabled:opacity-50"
             >
               <MicIcon size={36} />
             </button>
@@ -382,7 +382,7 @@ export function InterviewSession({
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-sm font-medium text-ink-soft">Ярьсан үг</p>
           <div className="flex gap-1.5">
-            {question.transcript?.isMock ? <Badge tone="ember">Туршилтын AI</Badge> : null}
+            {question.transcript?.isMock ? <Badge tone="forest">Туршилтын AI</Badge> : null}
             {question.transcript?.isEdited ? <Badge tone="sage">Хүн засварласан</Badge> : null}
           </div>
         </div>
@@ -395,7 +395,7 @@ export function InterviewSession({
               ? 'Бичлэг хадгалсны дараа энд автоматаар гарч ирнэ. Буруу бичигдсэн нэрийг засаж болно.'
               : 'AI тохируулаагүй байна. Ярьсан үгийг өөрөө бичиж болно — эх бичлэг архивт хэвээр хадгалагдана.'
           }
-          className="min-h-36 w-full resize-y rounded-xl border border-line bg-surface px-3.5 py-3 text-[16px] leading-relaxed text-ink placeholder:text-muted/70 focus:border-ember focus:outline-none"
+          className="min-h-36 w-full resize-y rounded-xl border border-line bg-surface px-3.5 py-3 text-[16px] leading-relaxed text-ink placeholder:text-muted/70 focus:border-forest focus:outline-none"
         />
 
         {!aiConfigured ? (

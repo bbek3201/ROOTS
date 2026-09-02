@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { describeRpcError } from '@/lib/supabase/errors';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SelectField, TextField } from '@/components/ui/Field';
@@ -45,7 +46,7 @@ export function AddChildForm({ coupleId, className }: { coupleId: string; classN
       setError(
         rpcError.message.includes('permission')
           ? 'Танд хүүхэд нэмэх эрх байхгүй байна.'
-          : 'Хадгалахад алдаа гарлаа. Дахин оролдоно уу.',
+          : describeRpcError(rpcError, 'Хадгалахад алдаа гарлаа. Дахин оролдоно уу.'),
       );
       setSaving(false);
       return;

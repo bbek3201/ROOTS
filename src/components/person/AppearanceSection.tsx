@@ -18,7 +18,7 @@ import type { AppearanceDescriptionRow } from '@/types/database';
  *
  *   photograph         — verified, taken from a real photo   (sage)
  *   family_description — a relative's recollection, attributed (gold)
- *   ai_summary         — AI reorganisation of the above      (ember)
+ *   ai_summary         — AI reorganisation of the above      (forest)
  *
  * The AI summary is never a new fact. It only merges what relatives wrote, and
  * it is labelled as AI everywhere it appears.
@@ -134,7 +134,7 @@ export function AppearanceSection({
           <button
             type="button"
             onClick={() => setAdding((value) => !value)}
-            className="text-sm font-medium text-ember"
+            className="text-sm font-medium text-forest"
           >
             {adding ? 'Болих' : 'Тайлбар нэмэх'}
           </button>
@@ -230,16 +230,16 @@ function DescriptionCard({
 }) {
   const styles = {
     verified: 'border-sage/30 bg-sage-wash',
-    family: 'border-gold/30 bg-gold-wash',
-    ai: 'border-ember/30 bg-ember-wash',
+    family: 'border-olive/30 bg-olive-wash',
+    ai: 'border-forest/30 bg-forest-wash',
   }[tone];
 
   return (
     <article className={`card ${styles}`}>
       <div className="flex items-start justify-between gap-2">
         {tone === 'verified' ? <Badge tone="sage">Зурагнаас баталгаажсан</Badge> : null}
-        {tone === 'family' ? <Badge tone="gold">Гэр бүлийн дурсамж</Badge> : null}
-        {tone === 'ai' ? <Badge tone="ember">AI-аар эмхэтгэсэн · баримт биш</Badge> : null}
+        {tone === 'family' ? <Badge tone="olive">Гэр бүлийн дурсамж</Badge> : null}
+        {tone === 'ai' ? <Badge tone="forest">AI-аар эмхэтгэсэн · баримт биш</Badge> : null}
 
         <button
           type="button"
@@ -247,7 +247,7 @@ function DescriptionCard({
           aria-label={speaking ? 'Уншихыг зогсоох' : 'Чангаар унших'}
           aria-pressed={speaking}
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface ${
-            speaking ? 'text-ember' : 'text-ink-soft'
+            speaking ? 'text-forest' : 'text-ink-soft'
           }`}
         >
           <SpeakerIcon size={17} />

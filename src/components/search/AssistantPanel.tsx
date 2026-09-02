@@ -76,7 +76,7 @@ export function AssistantPanel() {
           onChange={(event) => setQuestion(event.target.value)}
           placeholder="Гэр бүлийнхээ талаар асуугаарай…"
           aria-label="Гэр бүлийн талаар асуух"
-          className="min-h-12 flex-1 rounded-full border border-line bg-surface px-4 text-[16px] text-ink placeholder:text-muted/70 focus:border-ember focus:outline-none"
+          className="min-h-12 flex-1 rounded-full border border-line bg-surface px-4 text-[16px] text-ink placeholder:text-muted/70 focus:border-forest focus:outline-none"
         />
         <Button type="submit" loading={loading} disabled={question.trim().length < 2}>
           Асуух
@@ -103,16 +103,16 @@ export function AssistantPanel() {
       ) : null}
 
       {answer ? (
-        <Card className={answer.unknown ? 'border-gold/30 bg-gold-wash' : ''}>
+        <Card className={answer.unknown ? 'border-olive/30 bg-olive-wash' : ''}>
           <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
             {answer.source === 'database' ? (
               <Badge tone="sage">Өгөгдлийн сангаас тооцоолсон</Badge>
             ) : (
-              <Badge tone="ember" icon={<SparkIcon size={12} />}>
+              <Badge tone="forest" icon={<SparkIcon size={12} />}>
                 {answer.isMock ? 'AI (туршилтын горим)' : 'AI-аар үгчилсэн'}
               </Badge>
             )}
-            {answer.unknown ? <Badge tone="gold">Мэдээлэл дутуу</Badge> : null}
+            {answer.unknown ? <Badge tone="olive">Мэдээлэл дутуу</Badge> : null}
           </div>
 
           <p className="whitespace-pre-line text-[0.98rem] leading-relaxed text-ink">{answer.answer}</p>

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { describeRpcError } from '@/lib/supabase/errors';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -54,7 +55,7 @@ export function InviteManager({
 
     const row = Array.isArray(data) ? data[0] : null;
     if (rpcError || !row) {
-      setError('Урилга үүсгэхэд алдаа гарлаа.');
+      setError(describeRpcError(rpcError, 'Урилга үүсгэхэд алдаа гарлаа.'));
       setLoading(false);
       return;
     }
@@ -142,7 +143,7 @@ export function InviteManager({
                     Дуусах: {new Date(invitation.expiresAt).toLocaleDateString('mn-MN')}
                   </span>
                 </span>
-                <Badge tone="gold">{roleLabel(invitation.role)}</Badge>
+                <Badge tone="olive">{roleLabel(invitation.role)}</Badge>
                 <button
                   type="button"
                   onClick={() => revoke(invitation.id)}

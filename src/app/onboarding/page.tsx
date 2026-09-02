@@ -12,7 +12,7 @@ export default async function OnboardingPage() {
   return (
     <main id="main" className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-12">
       <header className="mb-7">
-        <p className="font-display text-xs tracking-[0.35em] text-gold">ROOTS</p>
+        <p className="font-display text-xs tracking-[0.35em] text-olive">ROOTS</p>
         <h1 className="mt-3 font-display text-3xl leading-tight text-ink">
           {profile?.display_name ? `Тавтай морил, ${profile.display_name}.` : 'Тавтай морил.'}
         </h1>

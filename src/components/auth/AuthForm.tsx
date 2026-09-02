@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/Field';
+import { EyeIcon } from '@/components/icons';
 
 /**
  * Sign-in and sign-up.
@@ -18,6 +19,7 @@ export function AuthForm({ mode, nextPath }: { mode: 'signin' | 'signup'; nextPa
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -65,7 +67,8 @@ export function AuthForm({ mode, nextPath }: { mode: 'signin' | 'signup'; nextPa
   };
 
   return (
-    <form onSubmit={submit} className="card space-y-4 p-5">
+    // The card comes from AuthShell — this is only the fields.
+    <form onSubmit={submit} className="space-y-4">
       {mode === 'signup' ? (
         <TextField
           label="Таны нэр"
@@ -90,13 +93,28 @@ export function AuthForm({ mode, nextPath }: { mode: 'signin' | 'signup'; nextPa
 
       <TextField
         label="Нууц үг"
-        type="password"
+        type={showPassword ? 'text' : 'password'}
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
         minLength={8}
         hint={mode === 'signup' ? 'Дор хаяж 8 тэмдэгт.' : undefined}
         required
+        // Typing a password blind on a phone keyboard is the most common
+        // reason a correct password is rejected.
+        trailing={
+          <button
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-pressed={showPassword}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:text-ink-soft"
+          >
+            <EyeIcon size={19} />
+            <span className="sr-only-text">
+              {showPassword ? 'Нууц үгийг нуух' : 'Нууц үгийг харуулах'}
+            </span>
+          </button>
+        }
       />
 
       {error ? (
@@ -112,7 +130,7 @@ export function AuthForm({ mode, nextPath }: { mode: 'signin' | 'signup'; nextPa
       ) : null}
 
       <Button type="submit" size="lg" fullWidth loading={loading}>
-        {mode === 'signup' ? 'Бүртгүүлэх' : 'Нэвтрэх'}
+        {mode === 'signup' ? 'Бүртгэл үүсгэх' : 'Нэвтрэх'}
       </Button>
     </form>
   );

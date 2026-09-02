@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { isSupabaseConfigured } from '@/lib/env';
 import { AuthForm } from '@/components/auth/AuthForm';
+import { AuthShell } from '@/components/auth/AuthShell';
 
 export default async function LoginPage({
   searchParams,
@@ -11,24 +11,19 @@ export default async function LoginPage({
   if (!isSupabaseConfigured()) redirect('/setup');
   const { next } = await searchParams;
 
+  // Carry the destination through the switch, so someone who clicks a deep
+  // link, discovers they have no account and signs up still lands where they
+  // were headed.
+  const suffix = next ? `?next=${encodeURIComponent(next)}` : '';
+
   return (
-    <main id="main" className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-12">
-      <header className="mb-8 text-center">
-        <p className="font-display text-xs tracking-[0.35em] text-gold">ROOTS</p>
-        <h1 className="mt-3 font-display text-3xl leading-tight text-ink">Гэр бүлийн архив</h1>
-        <p className="mt-3 text-balance text-ink-soft">
-          Танай гэр бүл өөрийн түүхээ хэзээ ч мартах ёсгүй.
-        </p>
-      </header>
-
+    <AuthShell
+      mode="signin"
+      title="Гэр бүлийн түүх үргэлжилсээр."
+      intro="Долоон үеийн хүмүүс, дуу хоолой, зураг, дурсамж — бүгд нэг газар, зөвхөн танайхны хувьд."
+      switchHref={{ signin: `/login${suffix}`, signup: `/signup${suffix}` }}
+    >
       <AuthForm mode="signin" nextPath={next ?? '/'} />
-
-      <p className="mt-6 text-center text-sm text-muted">
-        Шинэ хэрэглэгч үү?{' '}
-        <Link href="/signup" className="font-medium text-ember underline underline-offset-4">
-          Бүртгүүлэх
-        </Link>
-      </p>
-    </main>
+    </AuthShell>
   );
 }

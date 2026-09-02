@@ -39,7 +39,7 @@ export function Avatar({
     <span
       className={cn(
         'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full',
-        'border border-line bg-gold-wash font-display text-ink-soft',
+        'photo-frame font-display text-sage',
         SIZES[size],
         className,
       )}
@@ -53,7 +53,7 @@ export function Avatar({
         <span>{initials(person)}</span>
       )}
       {deceased ? (
-        <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-inset ring-muted/30" />
+        <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-inset ring-muted/25" />
       ) : null}
     </span>
   );

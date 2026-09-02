@@ -38,14 +38,14 @@ export function FamilySwitcher({
               <span className="min-w-0">
                 <span className={cn(
                   'block truncate text-sm font-medium',
-                  family.id === activeFamilyId ? 'text-ember' : 'text-ink',
+                  family.id === activeFamilyId ? 'text-forest' : 'text-ink',
                 )}>
                   {family.name}
                 </span>
                 <span className="block text-xs text-muted">{family.role}</span>
               </span>
               {family.id === activeFamilyId ? (
-                <span className="shrink-0 text-xs font-medium text-ember">Идэвхтэй</span>
+                <span className="shrink-0 text-xs font-medium text-forest">Идэвхтэй</span>
               ) : null}
             </button>
           </li>

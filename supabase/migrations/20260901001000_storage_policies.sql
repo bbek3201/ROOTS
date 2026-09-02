@@ -55,6 +55,7 @@ end;
 $$;
 
 -- Reads: any active member of the owning family.
+drop policy if exists "family media read" on storage.objects;
 create policy "family media read" on storage.objects
   for select to authenticated
   using (
@@ -64,6 +65,7 @@ create policy "family media read" on storage.objects
   );
 
 -- Writes: contributor and above, and only into their own family's prefix.
+drop policy if exists "family media insert" on storage.objects;
 create policy "family media insert" on storage.objects
   for insert to authenticated
   with check (
@@ -74,6 +76,7 @@ create policy "family media insert" on storage.objects
 
 -- Updates are restricted to the derived/ prefix. There is no path by which a
 -- client can overwrite a file stored under original/.
+drop policy if exists "family media update derived only" on storage.objects;
 create policy "family media update derived only" on storage.objects
   for update to authenticated
   using (
@@ -89,6 +92,7 @@ create policy "family media update derived only" on storage.objects
   );
 
 -- Deletes: admins only, and never an original.
+drop policy if exists "family media delete derived only" on storage.objects;
 create policy "family media delete derived only" on storage.objects
   for delete to authenticated
   using (

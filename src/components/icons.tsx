@@ -30,6 +30,14 @@ function Icon({ size = 22, children, ...props }: IconProps) {
   );
 }
 
+export const HomeIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 11.2 12 4.5l8 6.7" />
+    <path d="M6.2 10.4V19a.8.8 0 0 0 .8.8h10a.8.8 0 0 0 .8-.8v-8.6" />
+    <path d="M10 20v-5h4v5" />
+  </Icon>
+);
+
 export const TreeIcon = (props: IconProps) => (
   <Icon {...props}>
     <circle cx="7" cy="5" r="2.3" />

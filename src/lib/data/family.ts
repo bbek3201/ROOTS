@@ -28,8 +28,13 @@ export const getFamilyIndex = cache(async (familyId: string): Promise<FamilyInde
   return buildFamilyIndex(await getFamilyGraph(familyId));
 });
 
+/** A memory with just enough of its media attached to show a cover. */
+export type MemoryWithCover = MemoryRow & {
+  media?: Array<{ id: string; kind: string; variant: string; storage_path: string }>;
+};
+
 export interface FamilyHomeData {
-  recentMemories: MemoryRow[];
+  recentMemories: MemoryWithCover[];
   resumableInterview: InterviewRow | null;
   upcomingTimeline: TimelineEventRow[];
   counts: { people: number; couples: number; memories: number; media: number };
@@ -40,13 +45,15 @@ export async function getFamilyHome(familyId: string): Promise<FamilyHomeData> {
   const supabase = await createClient();
 
   const [memories, interview, timeline, peopleCount, coupleCount, memoryCount, mediaCount] = await Promise.all([
+    // The home screen leads with photographs, so covers come back with the
+    // memories rather than in a second pass per card.
     supabase
       .from('memories')
-      .select('*')
+      .select('*, media(id, kind, variant, storage_path)')
       .eq('family_id', familyId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(6),
+      .limit(8),
     supabase
       .from('interviews')
       .select('*')
@@ -70,7 +77,7 @@ export async function getFamilyHome(familyId: string): Promise<FamilyHomeData> {
   ]);
 
   return {
-    recentMemories: memories.data ?? [],
+    recentMemories: (memories.data ?? []) as unknown as MemoryWithCover[],
     resumableInterview: interview.data ?? null,
     upcomingTimeline: timeline.data ?? [],
     counts: {
@@ -146,4 +153,20 @@ function mediaActionLabel(kind: string): string {
     case 'video': return 'Видео бичлэг нэмэгдлээ';
     default: return 'Баримт архивт нэмэгдлээ';
   }
+}
+
+/**
+ * Storage paths for a set of media ids.
+ *
+ * The tree graph carries `profile_photo_media_id` but no path, because the
+ * graph is loaded by an RPC that must stay cheap enough to call while panning.
+ * Screens that actually show faces resolve the paths here, in one query.
+ */
+export async function getMediaPaths(mediaIds: Array<string | null | undefined>): Promise<Map<string, string>> {
+  const ids = [...new Set(mediaIds.filter((id): id is string => Boolean(id)))];
+  if (ids.length === 0) return new Map();
+
+  const supabase = await createClient();
+  const { data } = await supabase.from('media').select('id, storage_path').in('id', ids);
+  return new Map((data ?? []).map((row) => [row.id, row.storage_path]));
 }

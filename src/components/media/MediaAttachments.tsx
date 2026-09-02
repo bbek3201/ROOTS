@@ -50,7 +50,7 @@ export function MediaAttachments({ items }: { items: Item[] }) {
               onClick={() => toggleAudio(item)}
               disabled={!item.url}
               aria-label={playingId === item.id ? 'Зогсоох' : 'Сонсох'}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ember text-white disabled:opacity-40"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-forest text-forest-ink disabled:opacity-40"
             >
               {playingId === item.id ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
             </button>

@@ -77,14 +77,14 @@ export function StartInterview({
                 aria-pressed={setId === set.id}
                 className={cn(
                   'w-full rounded-2xl border px-3.5 py-3 text-left transition-colors',
-                  setId === set.id ? 'border-ember bg-ember-wash' : 'border-line bg-surface',
+                  setId === set.id ? 'border-forest bg-forest-wash' : 'border-line bg-surface',
                 )}
               >
                 <span className="block text-sm font-medium text-ink">{set.title}</span>
                 {set.description ? (
                   <span className="mt-0.5 block text-xs leading-relaxed text-muted">{set.description}</span>
                 ) : null}
-                <span className="mt-1 block text-xs text-gold">{set.questionCount} асуулт</span>
+                <span className="mt-1 block text-xs text-olive">{set.questionCount} асуулт</span>
               </button>
             ))}
           </div>

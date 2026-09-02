@@ -112,7 +112,7 @@ export function PhotoWall({ photos }: { photos: Photo[] }) {
               {open.variant === 'original' ? (
                 <Badge tone="sage">Эх хувь</Badge>
               ) : (
-                <Badge tone="ember">Сэргээсэн хувилбар · эх хувь архивт хэвээр</Badge>
+                <Badge tone="forest">Сэргээсэн хувилбар · эх хувь архивт хэвээр</Badge>
               )}
             </p>
           </div>

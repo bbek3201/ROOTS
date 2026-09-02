@@ -1,12 +1,12 @@
 import { cn } from '@/lib/cn';
 import type { ReactNode } from 'react';
 
-type Tone = 'neutral' | 'ember' | 'gold' | 'sage' | 'danger';
+type Tone = 'neutral' | 'forest' | 'olive' | 'sage' | 'danger';
 
 const TONES: Record<Tone, string> = {
   neutral: 'bg-parchment-deep text-ink-soft border-line',
-  ember: 'bg-ember-wash text-ember border-ember/25',
-  gold: 'bg-gold-wash text-gold border-gold/25',
+  forest: 'bg-forest-wash text-forest border-forest/25',
+  olive: 'bg-olive-wash text-olive border-olive/25',
   sage: 'bg-sage-wash text-sage border-sage/25',
   danger: 'bg-danger-wash text-danger border-danger/25',
 };
@@ -53,15 +53,15 @@ export function ProvenanceBadge({
     case 'verified':
       return <Badge tone="sage">Баримтжсан</Badge>;
     case 'family_memory':
-      return <Badge tone="gold">Гэр бүлийн дурсамж</Badge>;
+      return <Badge tone="olive">Гэр бүлийн дурсамж</Badge>;
     case 'ai':
       return (
-        <Badge tone="ember">
+        <Badge tone="forest">
           {isMock ? 'AI (туршилтын горим)' : 'AI-аар эмхэтгэсэн'}
         </Badge>
       );
     case 'unconfirmed':
-      return <Badge tone="ember">Батлагдаагүй</Badge>;
+      return <Badge tone="forest">Батлагдаагүй</Badge>;
     case 'disputed':
       return <Badge tone="danger">Зөрчилтэй</Badge>;
   }

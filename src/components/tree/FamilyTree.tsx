@@ -38,6 +38,10 @@ interface Props {
   locale?: string;
   visibleGenerations?: number;
   onOpenPerson?: (personId: string) => void;
+  /** The heart between two portraits opens their couple. */
+  onOpenCouple?: (coupleId: string) => void;
+  /** personId → signed URL of their portrait. The tree is faces, not boxes. */
+  photoUrls?: Record<string, string>;
 }
 
 const MIN_SCALE = 0.25;
@@ -49,6 +53,8 @@ export function FamilyTree({
   locale = 'mn',
   visibleGenerations = 7,
   onOpenPerson,
+  onOpenCouple,
+  photoUrls = {},
 }: Props) {
   const index = useMemo(() => buildFamilyIndex(graph), [graph]);
   const kinship = useMemo(() => getKinshipLocale(locale), [locale]);
@@ -126,14 +132,27 @@ export function FamilyTree({
     [layout.personPositions, viewport.width, viewport.height],
   );
 
-  // Fit once the canvas has a real size, then centre on the viewer.
+  // The opening view, once the canvas has a real size.
+  //
+  // Whole family first: seeing the shape of it is the reason someone opened
+  // this screen, and landing mid-canvas with a generation cropped off the top
+  // reads as a broken page rather than as a map. Only when the tree is too big
+  // to fit legibly do we fall back to centring on the viewer, which at least
+  // starts them somewhere they recognise.
   const hasFitted = useRef(false);
   useEffect(() => {
     if (hasFitted.current || viewport.width < 50) return;
     hasFitted.current = true;
-    if (focusPersonId && layout.personPositions.has(focusPersonId)) centreOn(focusPersonId, 0.9);
-    else fitToView();
-  }, [viewport.width, focusPersonId, layout.personPositions, centreOn, fitToView]);
+
+    const { width, height } = layout.bounds;
+    const fitScale = Math.min((viewport.width - 64) / width, (viewport.height - 64) / height);
+
+    if (fitScale >= 0.5 || !focusPersonId || !layout.personPositions.has(focusPersonId)) {
+      fitToView();
+    } else {
+      centreOn(focusPersonId, 0.9);
+    }
+  }, [viewport.width, viewport.height, focusPersonId, layout.bounds, layout.personPositions, centreOn, fitToView]);
 
   // --- pointer interaction --------------------------------------------------
   const onPointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
@@ -283,6 +302,8 @@ export function FamilyTree({
                   highlighted={highlightedPeople}
                   onSelect={selectPerson}
                   onOpen={onOpenPerson}
+                  onOpenCouple={onOpenCouple}
+                  photoUrls={photoUrls}
                 />
               ))}
             </g>
@@ -304,7 +325,14 @@ export function FamilyTree({
               term: position === 0 ? kinship.self : kinship.describe(step.descriptor).label,
             })) ?? []
           }
+          couples={(index.couplesByPerson.get(selectedPerson.id) ?? []).map((couple) => {
+            const partnerId =
+              couple.person_a_id === selectedPerson.id ? couple.person_b_id : couple.person_a_id;
+            const partner = partnerId ? index.people.get(partnerId) : null;
+            return { id: couple.id, label: partner ? displayName(partner) : 'Хос' };
+          })}
           onOpen={() => onOpenPerson?.(selectedPerson.id)}
+          onOpenCouple={(coupleId) => onOpenCouple?.(coupleId)}
           onClose={() => setSelectedId(null)}
         />
       ) : null}
@@ -356,9 +384,11 @@ function TreeEdges({ layout, highlighted }: { layout: TreeLayout; highlighted: S
               return (
                 <path
                   key={`${unit.id}->${child.id}`}
-                  d={`M ${startX} ${startY} V ${busY} H ${childX} V ${child.y}`}
-                  stroke={active ? 'var(--color-ember)' : 'var(--color-line)'}
-                  strokeWidth={active ? 2.4 : 1.4}
+                  d={connector(startX, startY, childX, child.y, busY)}
+                  stroke={active ? 'var(--color-forest)' : 'var(--color-sage-soft)'}
+                  strokeWidth={active ? 2.2 : 1.3}
+                  strokeLinecap="round"
+                  opacity={active ? 1 : 0.75}
                 />
               );
             })}
@@ -376,9 +406,10 @@ function TreeEdges({ layout, highlighted }: { layout: TreeLayout; highlighted: S
           <path
             key={`cross:${link.coupleId}`}
             d={`M ${from.x + from.width} ${y} H ${to.x}`}
-            stroke="var(--color-gold)"
-            strokeWidth={1.6}
-            strokeDasharray="4 4"
+            stroke="var(--color-sage-soft)"
+            strokeWidth={1.4}
+            strokeDasharray="3 5"
+            strokeLinecap="round"
           />
         );
       })}
@@ -394,6 +425,8 @@ function TreeUnitNode({
   highlighted,
   onSelect,
   onOpen,
+  onOpenCouple,
+  photoUrls,
 }: {
   unit: TreeUnit;
   index: ReturnType<typeof buildFamilyIndex>;
@@ -402,6 +435,8 @@ function TreeUnitNode({
   highlighted: Set<string>;
   onSelect: (personId: string) => void;
   onOpen?: (personId: string) => void;
+  onOpenCouple?: (coupleId: string) => void;
+  photoUrls: Record<string, string>;
 }) {
   const members = [
     { personId: unit.anchorId, offset: 0 },
@@ -417,16 +452,45 @@ function TreeUnitNode({
       {unit.partners.map((partner, position) => {
         const x1 = NODE_WIDTH / 2 + position * (NODE_WIDTH + PARTNER_GAP);
         const x2 = x1 + NODE_WIDTH + PARTNER_GAP;
-        const y = 30;
+        const y = 28;
         return (
-          <g key={`bond:${partner.coupleId}`}>
-            <line x1={x1 + 24} y1={y} x2={x2 - 24} y2={y} stroke="var(--color-gold)" strokeWidth={1.6} />
+          <g
+            key={`bond:${partner.coupleId}`}
+            role="button"
+            tabIndex={0}
+            aria-label="Хосын хуудас нээх"
+            className="cursor-pointer outline-none"
+            onClick={() => onOpenCouple?.(partner.coupleId)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onOpenCouple?.(partner.coupleId);
+              }
+            }}
+          >
+            {/* An invisible target: the heart is 11px of glyph, which is not a
+                tap target on a phone. */}
+            <rect
+              x={x1 + 24}
+              y={y - 16}
+              width={x2 - x1 - 48}
+              height={32}
+              fill="transparent"
+            />
+            <line
+              x1={x1 + 30}
+              y1={y}
+              x2={x2 - 30}
+              y2={y}
+              stroke="var(--color-sage-soft)"
+              strokeWidth={1.3}
+            />
             <text
               x={(x1 + x2) / 2}
               y={y + 4}
               textAnchor="middle"
               fontSize={11}
-              fill="var(--color-ember)"
+              fill="var(--color-heart)"
             >
               ♥
             </text>
@@ -441,6 +505,7 @@ function TreeUnitNode({
         const isFocus = focusPersonId === personId;
         const isOnPath = highlighted.has(personId);
         const years = lifespan(person);
+        const photoUrl = photoUrls[personId];
 
         return (
           <g
@@ -459,61 +524,96 @@ function TreeUnitNode({
               }
             }}
           >
-            <rect
-              x={0}
-              y={0}
-              width={NODE_WIDTH}
-              height={NODE_HEIGHT}
-              rx={16}
-              fill="var(--color-surface)"
-              stroke={
-                isSelected ? 'var(--color-ember)'
-                  : isFocus ? 'var(--color-sage)'
-                  : isOnPath ? 'var(--color-ember-soft)'
-                  : 'var(--color-line)'
-              }
-              strokeWidth={isSelected || isFocus ? 2.4 : isOnPath ? 1.8 : 1.2}
-            />
-
+            {/* A face, drawn as a circle. No card: a tree of boxes is an org
+                chart, and the whole point of this screen is that these are
+                people. Selection is a ring, which needs no extra chrome. */}
             <circle
               cx={NODE_WIDTH / 2}
-              cy={30}
-              r={20}
-              fill="var(--color-gold-wash)"
+              cy={PORTRAIT_CY}
+              r={PORTRAIT_R + 3}
+              fill="none"
+              stroke={
+                isSelected ? 'var(--color-forest)'
+                  : isFocus ? 'var(--color-sage)'
+                  : isOnPath ? 'var(--color-forest-soft)'
+                  : 'transparent'
+              }
+              strokeWidth={isSelected || isFocus ? 2 : 1.6}
+            />
+            <circle
+              cx={NODE_WIDTH / 2}
+              cy={PORTRAIT_CY}
+              r={PORTRAIT_R}
+              fill="var(--color-sage-wash)"
               stroke="var(--color-line)"
               strokeWidth={1}
             />
-            <text
-              x={NODE_WIDTH / 2}
-              y={36}
-              textAnchor="middle"
-              fontSize={17}
-              fontFamily="var(--font-display)"
-              fill="var(--color-ink-soft)"
-            >
-              {displayName(person).slice(0, 1)}
-            </text>
+            {photoUrl ? (
+              <>
+                <clipPath id={`portrait-${personId}`}>
+                  <circle cx={NODE_WIDTH / 2} cy={PORTRAIT_CY} r={PORTRAIT_R} />
+                </clipPath>
+                <image
+                  href={photoUrl}
+                  x={NODE_WIDTH / 2 - PORTRAIT_R}
+                  y={PORTRAIT_CY - PORTRAIT_R}
+                  width={PORTRAIT_R * 2}
+                  height={PORTRAIT_R * 2}
+                  preserveAspectRatio="xMidYMid slice"
+                  clipPath={`url(#portrait-${personId})`}
+                />
+              </>
+            ) : (
+              <text
+                x={NODE_WIDTH / 2}
+                y={PORTRAIT_CY + 7}
+                textAnchor="middle"
+                fontSize={20}
+                fontFamily="var(--font-display)"
+                fill="var(--color-sage)"
+              >
+                {displayName(person).slice(0, 1)}
+              </text>
+            )}
 
             <text
               x={NODE_WIDTH / 2}
-              y={70}
+              y={PORTRAIT_CY + PORTRAIT_R + 18}
               textAnchor="middle"
               fontSize={11.5}
-              fontWeight={600}
+              fontFamily="var(--font-display)"
               fill="var(--color-ink)"
             >
               {truncate(displayName(person), 11)}
             </text>
             {years ? (
-              <text x={NODE_WIDTH / 2} y={85} textAnchor="middle" fontSize={9.5} fill="var(--color-muted)">
+              <text
+                x={NODE_WIDTH / 2}
+                y={PORTRAIT_CY + PORTRAIT_R + 31}
+                textAnchor="middle"
+                fontSize={9.5}
+                fill="var(--color-muted)"
+              >
                 {years}
               </text>
             ) : null}
             {person.life_status === 'deceased' ? (
-              <circle cx={NODE_WIDTH - 12} cy={12} r={3} fill="var(--color-muted)" opacity={0.5} />
+              <circle
+                cx={NODE_WIDTH / 2 + PORTRAIT_R - 4}
+                cy={PORTRAIT_CY - PORTRAIT_R + 6}
+                r={3}
+                fill="var(--color-muted)"
+                opacity={0.55}
+              />
             ) : null}
             {isFocus ? (
-              <text x={NODE_WIDTH / 2} y={99} textAnchor="middle" fontSize={9} fill="var(--color-sage)">
+              <text
+                x={NODE_WIDTH / 2}
+                y={PORTRAIT_CY + PORTRAIT_R + 44}
+                textAnchor="middle"
+                fontSize={9}
+                fill="var(--color-sage)"
+              >
                 Та
               </text>
             ) : null}
@@ -522,6 +622,34 @@ function TreeUnitNode({
       })}
     </g>
   );
+}
+
+/** Portrait geometry, shared by the node and the couple bond. */
+const PORTRAIT_R = 26;
+const PORTRAIT_CY = 28;
+
+/**
+ * A parent→child connector with rounded corners.
+ *
+ * Straight elbows read as a circuit diagram. The radius is clamped to the
+ * space actually available so a child directly below its parent still gets a
+ * clean vertical line rather than a kink.
+ */
+function connector(startX: number, startY: number, endX: number, endY: number, busY: number): string {
+  const dx = endX - startX;
+  if (Math.abs(dx) < 1) return `M ${startX} ${startY} V ${endY}`;
+
+  const direction = Math.sign(dx);
+  const radius = Math.min(14, Math.abs(dx) / 2, (busY - startY) / 2, (endY - busY) / 2);
+
+  return [
+    `M ${startX} ${startY}`,
+    `V ${busY - radius}`,
+    `Q ${startX} ${busY} ${startX + direction * radius} ${busY}`,
+    `H ${endX - direction * radius}`,
+    `Q ${endX} ${busY} ${endX} ${busY + radius}`,
+    `V ${endY}`,
+  ].join(' ');
 }
 
 function truncate(value: string, max: number): string {
@@ -550,26 +678,26 @@ function TreeControls({
   onFit: () => void;
 }) {
   return (
-    <div className="border-b border-line bg-parchment/80 px-3 py-2 backdrop-blur">
+    <div className="px-5 pb-3">
       <div className="relative flex items-center gap-2">
         <input
           type="search"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Модноос хүн хайх…"
+          placeholder="Хүн хайх"
           aria-label="Гэр бүлийн модноос хайх"
-          className="min-h-11 flex-1 rounded-full border border-line bg-surface px-4 text-[16px] text-ink placeholder:text-muted/70 focus:border-ember focus:outline-none"
+          className="min-h-11 flex-1 rounded-pill border border-transparent bg-parchment-deep/70 px-4 text-[16px] text-ink placeholder:text-muted focus:border-sage-soft focus:bg-surface focus:outline-none"
         />
         <button
           type="button"
           onClick={onFit}
-          className="min-h-11 shrink-0 rounded-full border border-line bg-surface px-3 text-sm text-ink-soft"
+          className="min-h-11 shrink-0 rounded-pill px-3 text-sm text-sage"
         >
           Бүгд
         </button>
 
         {matches.length > 0 ? (
-          <ul className="absolute inset-x-0 top-12 z-20 max-h-64 overflow-auto rounded-2xl border border-line bg-surface p-1 shadow-[var(--shadow-lift)]">
+          <ul className="absolute inset-x-0 top-12 z-20 max-h-64 overflow-auto rounded-2xl border border-line bg-surface p-1 shadow-(--shadow-lift)">
             {matches.map((match) => (
               <li key={match.id}>
                 <button
@@ -591,7 +719,7 @@ function TreeControls({
           <button
             type="button"
             onClick={() => onWindowChange(Math.max(allGenerations.min, activeWindow.from - 3))}
-            className="shrink-0 rounded-pill border border-gold/40 bg-gold-wash px-3 py-1 text-xs font-medium text-gold"
+            className="shrink-0 rounded-pill bg-olive-wash px-3 py-1.5 text-xs font-medium text-olive"
           >
             ↑ Архивт {activeWindow.archivedAbove} үе
           </button>
@@ -603,8 +731,10 @@ function TreeControls({
             type="button"
             onClick={() => onWindowChange(generation)}
             className={cn(
-              'shrink-0 rounded-pill border px-3 py-1 text-xs font-medium',
-              'border-line bg-surface text-ink-soft',
+              'shrink-0 rounded-pill px-3 py-1.5 text-xs font-medium transition-colors',
+              generation >= activeWindow.from && generation <= activeWindow.to
+                ? 'bg-forest-wash text-forest'
+                : 'text-muted hover:text-ink-soft',
             )}
           >
             {generation}-р үе
@@ -615,7 +745,7 @@ function TreeControls({
           <button
             type="button"
             onClick={() => onWindowChange(Math.min(allGenerations.max, activeWindow.to + 3))}
-            className="shrink-0 rounded-pill border border-gold/40 bg-gold-wash px-3 py-1 text-xs font-medium text-gold"
+            className="shrink-0 rounded-pill bg-olive-wash px-3 py-1.5 text-xs font-medium text-olive"
           >
             ↓ Дараагийн {activeWindow.archivedBelow} үе
           </button>
@@ -632,7 +762,9 @@ function SelectionPanel({
   relationshipLabel,
   relationshipNote,
   chain,
+  couples,
   onOpen,
+  onOpenCouple,
   onClose,
 }: {
   name: string;
@@ -641,11 +773,14 @@ function SelectionPanel({
   relationshipLabel: string | null;
   relationshipNote: string | null;
   chain: Array<{ id: string; name: string; term: string }>;
+  /** This person's marriages, so the couple page is one tap from the tree. */
+  couples: Array<{ id: string; label: string }>;
   onOpen: () => void;
+  onOpenCouple?: (coupleId: string) => void;
   onClose: () => void;
 }) {
   return (
-    <div className="fade-up border-t border-line bg-surface px-4 py-3 shadow-[var(--shadow-lift)]">
+    <div className="fade-up border-t border-line bg-surface px-4 py-3 shadow-(--shadow-lift)">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-display text-lg leading-tight text-ink">{name}</p>
@@ -664,8 +799,8 @@ function SelectionPanel({
       </div>
 
       {relationshipLabel ? (
-        <div className="mt-3 rounded-2xl bg-ember-wash px-3 py-2.5">
-          <p className="text-sm font-medium text-ember">Таны {relationshipLabel.toLocaleLowerCase('mn-MN')}</p>
+        <div className="mt-3 rounded-2xl bg-forest-wash px-3 py-2.5">
+          <p className="text-sm font-medium text-forest">Таны {relationshipLabel.toLocaleLowerCase('mn-MN')}</p>
           {chain.length > 1 ? (
             <p className="mt-1 text-xs leading-relaxed text-ink-soft">
               {chain.map((step) => `${step.term} (${step.name})`).join(' → ')}
@@ -675,10 +810,26 @@ function SelectionPanel({
         </div>
       ) : null}
 
+      {couples.length > 0 ? (
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {couples.map((couple) => (
+            <li key={couple.id}>
+              <button
+                type="button"
+                onClick={() => onOpenCouple?.(couple.id)}
+                className="min-h-10 rounded-pill bg-parchment-deep px-4 text-sm text-ink-soft transition-colors hover:text-ink"
+              >
+                <span className="text-heart">♥</span> {couple.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       <button
         type="button"
         onClick={onOpen}
-        className="mt-3 min-h-12 w-full rounded-full bg-ember text-sm font-medium text-white"
+        className="mt-3 min-h-12 w-full rounded-full bg-forest text-sm font-medium text-forest-ink"
       >
         Профайл нээх
       </button>

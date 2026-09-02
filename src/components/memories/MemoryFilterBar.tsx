@@ -46,7 +46,7 @@ export function MemoryFilterBar({
           onChange={(event) => setValue(event.target.value)}
           placeholder="Дурсамжаас хайх…"
           aria-label="Дурсамжаас хайх"
-          className="min-h-11 w-full rounded-full border border-line bg-surface px-4 text-[16px] text-ink placeholder:text-muted/70 focus:border-ember focus:outline-none"
+          className="min-h-11 w-full rounded-full border border-line bg-surface px-4 text-[16px] text-ink placeholder:text-muted/70 focus:border-forest focus:outline-none"
         />
       </form>
 
@@ -80,7 +80,7 @@ function FilterChip({
       aria-pressed={active}
       className={cn(
         'shrink-0 rounded-pill border px-3.5 py-1.5 text-sm font-medium transition-colors',
-        active ? 'border-ember bg-ember text-white' : 'border-line bg-surface text-ink-soft',
+        active ? 'border-forest bg-forest text-forest-ink' : 'border-line bg-surface text-ink-soft',
       )}
     >
       {children}

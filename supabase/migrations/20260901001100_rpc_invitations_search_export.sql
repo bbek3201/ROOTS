@@ -269,7 +269,9 @@ begin
       and d.ocr_text is not null
       and unaccent(lower(d.ocr_text)) ilike '%' || unaccent(lower(v_q)) || '%'
   ) results(result_type, result_id, title, subtitle, snippet, event_date, rank)
-  order by rank desc nulls last
+  -- Qualified deliberately: `rank` is also this function's OUT parameter, and an
+  -- unqualified reference is ambiguous to plpgsql (SQLSTATE 42702).
+  order by results.rank desc nulls last
   limit greatest(1, least(coalesce(p_limit, 40), 200));
 end;
 $$;
