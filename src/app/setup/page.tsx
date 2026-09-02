@@ -13,7 +13,7 @@ export default function SetupPage() {
 
   return (
     <main id="main" className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-12">
-      <p className="font-display text-sm tracking-[0.3em] text-gold">ROOTS</p>
+      <p className="font-display text-sm tracking-[0.3em] text-olive">ROOTS</p>
       <h1 className="mt-3 font-display text-3xl leading-tight text-ink">Тохиргоо дутуу байна</h1>
       <p className="mt-3 text-ink-soft">
         ROOTS ажиллахын тулд Supabase холболт шаардлагатай. Төслийн үндсэн хавтсанд{' '}

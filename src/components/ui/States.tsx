@@ -33,7 +33,7 @@ export function EmptyState({
           {isLinkAction(action) ? (
             <Link
               href={action.href}
-              className="inline-flex min-h-11 items-center rounded-pill bg-ember px-5 text-sm font-medium text-white"
+              className="inline-flex min-h-11 items-center rounded-pill bg-forest px-5 text-sm font-medium text-forest-ink"
             >
               {action.label}
             </Link>

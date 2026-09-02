@@ -8,10 +8,9 @@ import { describeRelationship } from '@/lib/kinship';
 import {
   getChildren, getParents, getPartners, getSiblings, getGrandparents, getGrandchildren,
 } from '@/lib/relationships/graph';
-import { AppHeader } from '@/components/nav/AppHeader';
+import { Photo, PhotoOverlay } from '@/components/ui/Photo';
+import { Display, Eyebrow, SectionLead } from '@/components/ui/Editorial';
 import { Avatar } from '@/components/ui/Avatar';
-import { Badge, ProvenanceBadge } from '@/components/ui/Badge';
-import { Card, SectionHeading } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/States';
 import { PersonTimeline } from '@/components/person/PersonTimeline';
 import { PeopleStrip } from '@/components/person/PeopleStrip';
@@ -19,10 +18,19 @@ import { AppearanceSection } from '@/components/person/AppearanceSection';
 import { VoiceSection } from '@/components/person/VoiceSection';
 import { PhotoWall } from '@/components/media/PhotoWall';
 import { displayName, fullName, formatDate, lifespan } from '@/lib/format';
-import { MapPinIcon } from '@/components/icons';
+import { ChevronLeftIcon, MapPinIcon } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * A person, not a record.
+ *
+ * The portrait fills the top of the screen at 4:5 with the name set over it,
+ * which is the difference between opening a profile and opening a row. Under
+ * it, the first thing shown is not a table of dates but how the viewer is
+ * related to this person — that is the question someone actually opened the
+ * page to answer.
+ */
 export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const membership = await requireActiveFamily();
@@ -40,8 +48,6 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const { person } = profile;
   const locale = membership.family.default_locale;
 
-  // How the VIEWER is related to this person — the question people open a
-  // profile to answer.
   const relationship = membership.person_id && membership.person_id !== id
     ? describeRelationship(index, membership.person_id, id, locale)
     : null;
@@ -60,95 +66,101 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
 
   const profilePhoto = photoWall.find((media) => media.id === person.profile_photo_media_id)
     ?? photoWall[0];
+  const portraitUrl = profilePhoto ? photoUrls.get(profilePhoto.storage_path) : null;
+  const gallery = photoWall.filter((media) => media.id !== profilePhoto?.id);
+
+  const facts = [
+    { label: 'Төрсөн', value: formatDate(person.birth_date, person.birth_date_precision, locale) },
+    { label: 'Төрсөн газар', value: profile.birthPlace?.name ?? '' },
+    { label: 'Таалал төгссөн', value: formatDate(person.death_date, person.death_date_precision, locale) },
+    { label: 'Мэргэжил', value: person.occupation ?? '' },
+    { label: 'Боловсрол', value: person.education ?? '' },
+  ].filter((fact) => fact.value);
 
   return (
-    <>
-      <AppHeader
-        title={displayName(person)}
-        subtitle={lifespan(person) || undefined}
-        backHref="/family/tree"
-        action={
-          <Link
-            href={`/person/${id}/edit`}
-            className="min-h-10 rounded-full border border-line px-3.5 text-sm leading-10 text-ink-soft"
-          >
-            Засах
-          </Link>
-        }
-      />
+    <main id="main" className="pb-12">
+      <section className="relative">
+        <Photo
+          src={portraitUrl}
+          alt={fullName(person)}
+          ratio="portrait"
+          rounded={false}
+          priority
+          initial={displayName(person).slice(0, 1)}
+          className="rounded-b-4xl"
+        >
+          <PhotoOverlay className="p-6 pb-7">
+            <Display size="xl" className="text-white">
+              {fullName(person)}
+            </Display>
+            <p className="mt-2 text-sm text-white/80">
+              {[lifespan(person), person.nickname ? `«${person.nickname}»` : null, person.occupation]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          </PhotoOverlay>
+        </Photo>
 
-      <main id="main" className="px-4 pb-8 pt-5">
-        {/* ---- identity ---- */}
-        <section className="mb-6 flex flex-col items-center text-center">
-          <Avatar
-            person={person}
-            photoUrl={profilePhoto ? photoUrls.get(profilePhoto.storage_path) : null}
-            size="xl"
-          />
-          <h2 className="mt-3 font-display text-2xl leading-tight text-ink">{fullName(person)}</h2>
-          {person.nickname ? <p className="text-sm text-muted">«{person.nickname}»</p> : null}
+        <Link
+          href="/family/tree"
+          aria-label="Буцах"
+          className="absolute left-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-md transition-colors hover:bg-black/40"
+        >
+          <ChevronLeftIcon size={19} />
+        </Link>
+        <Link
+          href={`/person/${id}/edit`}
+          className="absolute right-5 top-5 flex h-10 items-center rounded-pill bg-black/25 px-4 text-sm text-white backdrop-blur-md transition-colors hover:bg-black/40"
+        >
+          Засах
+        </Link>
+      </section>
 
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-            {person.generation ? <Badge tone="neutral">{person.generation}-р үе</Badge> : null}
-            {person.life_status === 'deceased' ? <Badge tone="neutral">Таалал төгссөн</Badge> : null}
-            {person.occupation ? <Badge tone="sage">{person.occupation}</Badge> : null}
-          </div>
+      <div className="px-5">
+        {relationship ? (
+          <section className="mt-6 rounded-(--radius-card) bg-sage-wash px-5 py-4">
+            <Eyebrow className="text-sage">Таны хэн бэ</Eyebrow>
+            <p className="mt-1.5 font-display text-[1.35rem] leading-tight text-forest">
+              Таны {relationship.term.label.toLocaleLowerCase('mn-MN')}
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+              {relationship.chain
+                .map((step, position) => {
+                  const name = displayName(index.people.get(step.personId));
+                  return position === 0 ? `Би (${name})` : `${step.term.label} (${name})`;
+                })
+                .join(' → ')}
+            </p>
+            {relationship.term.note ? (
+              <p className="mt-1.5 text-xs text-muted">{relationship.term.note}</p>
+            ) : null}
+          </section>
+        ) : null}
 
-          {relationship ? (
-            <div className="mt-4 w-full rounded-2xl bg-ember-wash px-4 py-3 text-left">
-              <p className="text-sm font-medium text-ember">
-                Таны {relationship.term.label.toLocaleLowerCase('mn-MN')}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-                {relationship.chain
-                  .map((step, position) => {
-                    const name = displayName(index.people.get(step.personId));
-                    return position === 0 ? `Би (${name})` : `${step.term.label} (${name})`;
-                  })
-                  .join(' → ')}
-              </p>
-              {relationship.term.note ? (
-                <p className="mt-1.5 text-xs text-muted">{relationship.term.note}</p>
-              ) : null}
-              {relationship.term.alternates?.length ? (
-                <p className="mt-0.5 text-xs text-muted">
-                  Бас: {relationship.term.alternates.join(', ')}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
+        {person.biography ? (
+          <section className="mt-8">
+            <p className="measure whitespace-pre-line text-[1.05rem] leading-[1.75] text-ink">
+              {person.biography}
+            </p>
+          </section>
+        ) : null}
 
-        {/* ---- facts ---- */}
-        <section className="mb-6">
-          <Card className="p-0">
-            <dl className="divide-y divide-line">
-              <Fact label="Төрсөн" value={formatDate(person.birth_date, person.birth_date_precision, locale)} />
-              <Fact
-                label="Төрсөн газар"
-                value={profile.birthPlace?.name ?? ''}
-                icon={<MapPinIcon size={15} />}
-              />
-              <Fact label="Таалал төгссөн" value={formatDate(person.death_date, person.death_date_precision, locale)} />
-              <Fact label="Мэргэжил" value={person.occupation ?? ''} />
-              <Fact label="Боловсрол" value={person.education ?? ''} />
+        {facts.length > 0 ? (
+          <section className="mt-8">
+            <dl className="divide-y divide-line/70">
+              {facts.map((fact) => (
+                <div key={fact.label} className="flex items-baseline gap-5 py-3">
+                  <dt className="w-28 shrink-0 text-sm text-muted">{fact.label}</dt>
+                  <dd className="min-w-0 flex-1 text-[0.95rem] text-ink">{fact.value}</dd>
+                </div>
+              ))}
             </dl>
-          </Card>
+          </section>
+        ) : null}
 
-          {person.biography ? (
-            <Card className="mt-3">
-              <h3 className="font-display text-base text-ink">Намтар</h3>
-              <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-ink-soft">
-                {person.biography}
-              </p>
-            </Card>
-          ) : null}
-        </section>
-
-        {/* ---- family ---- */}
-        <section className="mb-6">
-          <SectionHeading title="Гэр бүл" />
-          <div className="space-y-3">
+        <section className="mt-10">
+          <SectionLead label="Холбоо" title="Гэр бүл" />
+          <div className="space-y-4">
             <PeopleStrip label="Эцэг эх" people={parents} emptyHint="Эцэг эхийг нь нэмээгүй байна." />
             <PeopleStrip label="Өвөө эмээ" people={grandparents} />
             <PeopleStrip label="Ах дүү" people={siblings.full} />
@@ -161,7 +173,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           </div>
 
           {profile.couples.length > 0 ? (
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-5 space-y-2.5">
               {profile.couples.map((couple) => {
                 const partnerId = couple.person_a_id === id ? couple.person_b_id : couple.person_a_id;
                 const partner = partnerId ? index.people.get(partnerId) : null;
@@ -169,14 +181,14 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                   <li key={couple.id}>
                     <Link
                       href={`/couple/${couple.id}`}
-                      className="card flex items-center gap-3 p-3.5"
+                      className="flex items-center gap-3 rounded-(--radius-card) bg-parchment-deep/50 px-4 py-3.5 transition-colors hover:bg-parchment-deep"
                     >
-                      <Avatar person={person} size="xs" />
-                      <span className="text-ember">♥</span>
-                      <Avatar person={partner} size="xs" />
+                      <Avatar person={person} size="sm" />
+                      <span className="text-heart">♥</span>
+                      <Avatar person={partner} size="sm" />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-ink">
-                          {displayName(person)} ❤ {partner ? displayName(partner) : 'Тодорхойгүй'}
+                        <span className="block truncate text-sm text-ink">
+                          {displayName(person)} ба {partner ? displayName(partner) : 'Тодорхойгүй'}
                         </span>
                         <span className="block text-xs text-muted">
                           {couple.marriage_date
@@ -192,33 +204,34 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           ) : null}
         </section>
 
-        {/* ---- voice ---- */}
-        <VoiceSection
-          recordings={profile.audio.map((media) => ({
-            id: media.id,
-            url: photoUrls.get(media.storage_path) ?? null,
-            caption: media.caption,
-            createdAt: media.created_at,
-            durationSeconds: media.duration_seconds,
-          }))}
-          personName={displayName(person)}
-        />
-
-        {/* ---- appearance ---- */}
-        <AppearanceSection
-          personId={id}
-          personName={displayName(person)}
-          descriptions={profile.appearance}
-          hasPhotos={photoWall.length > 0}
-        />
-
-        {/* ---- photos ---- */}
-        <section className="mb-6">
-          <SectionHeading
-            title="Зургууд"
-            subtitle={photoWall.length > 0 ? `${photoWall.length} зураг` : undefined}
+        <div className="mt-10">
+          <VoiceSection
+            recordings={profile.audio.map((media) => ({
+              id: media.id,
+              url: photoUrls.get(media.storage_path) ?? null,
+              caption: media.caption,
+              createdAt: media.created_at,
+              durationSeconds: media.duration_seconds,
+            }))}
+            personName={displayName(person)}
           />
-          {photoWall.length === 0 ? (
+        </div>
+
+        <div className="mt-10">
+          <AppearanceSection
+            personId={id}
+            personName={displayName(person)}
+            descriptions={profile.appearance}
+            hasPhotos={photoWall.length > 0}
+          />
+        </div>
+
+        <section className="mt-10">
+          <SectionLead
+            label={photoWall.length > 0 ? `${photoWall.length} зураг` : undefined}
+            title="Зургууд"
+          />
+          {gallery.length === 0 ? (
             <EmptyState
               title="Зураг алга"
               description="Хуучин зураг оруулаад энэ хүнийг тэмдэглэвэл зураг нь энд автоматаар харагдана."
@@ -226,7 +239,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             />
           ) : (
             <PhotoWall
-              photos={photoWall.map((media) => ({
+              photos={gallery.map((media) => ({
                 id: media.id,
                 url: photoUrls.get(media.storage_path) ?? null,
                 caption: media.caption,
@@ -237,45 +250,37 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           )}
         </section>
 
-        {/* ---- timeline ---- */}
-        <section className="mb-6">
-          <SectionHeading title="Он цагийн хэлхээс" />
+        <section className="mt-10">
+          <SectionLead label="Амьдрал" title="Он цагийн хэлхээс" />
           <PersonTimeline entries={profile.timeline} locale={locale} />
         </section>
 
-        {/* ---- places ---- */}
         {profile.places.length > 0 ? (
-          <section className="mb-6">
-            <SectionHeading title="Амьдарч байсан газрууд" />
-            <Card className="p-0">
-              <ul className="divide-y divide-line">
-                {profile.places.map((place) => (
-                  <li key={place.id} className="flex items-center gap-3 px-4 py-3">
-                    <MapPinIcon size={16} className="shrink-0 text-gold" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-ink">
-                        {place.location?.name ?? 'Тодорхойгүй газар'}
-                      </span>
-                      <span className="block text-xs text-muted">
-                        {[place.from_date?.slice(0, 4), place.to_date?.slice(0, 4)].filter(Boolean).join(' – ')}
-                      </span>
+          <section className="mt-10">
+            <SectionLead label="Газар" title="Амьдарч байсан" />
+            <ul className="divide-y divide-line/70">
+              {profile.places.map((place) => (
+                <li key={place.id} className="flex items-center gap-3 py-3">
+                  <MapPinIcon size={16} className="shrink-0 text-sage" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[0.95rem] text-ink">
+                      {place.location?.name ?? 'Тодорхойгүй газар'}
                     </span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+                    <span className="block text-xs text-muted">
+                      {[place.from_date?.slice(0, 4), place.to_date?.slice(0, 4)].filter(Boolean).join(' – ')}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </section>
         ) : null}
 
-        {/* ---- memories ---- */}
-        <section>
-          <SectionHeading
+        <section className="mt-10">
+          <SectionLead
+            label="Түүхүүд"
             title="Дурсамжууд"
-            action={
-              <Link href={`/memories/new?person=${id}`} className="text-sm font-medium text-ember">
-                Нэмэх
-              </Link>
-            }
+            action={<Link href={`/memories/new?person=${id}`}>Нэмэх</Link>}
           />
           {profile.memories.length === 0 ? (
             <EmptyState
@@ -284,20 +289,19 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
               action={{ label: 'Дурсамж бичих', href: `/memories/new?person=${id}` }}
             />
           ) : (
-            <ul className="space-y-2.5">
+            <ul className="divide-y divide-line/70">
               {profile.memories.map((memory) => (
                 <li key={memory.id}>
-                  <Link href={`/memories/${memory.id}`} className="card block p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-ink">{memory.title}</p>
-                      <ProvenanceBadge kind="family_memory" />
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-muted">
+                  <Link href={`/memories/${memory.id}`} className="block py-4">
+                    <p className="font-display text-[1.1rem] leading-snug text-ink">{memory.title}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-ink-soft">
                       {memory.description ?? memory.body ?? ''}
                     </p>
-                    <p className="mt-2 text-xs text-muted">
+                    <p className="mt-1.5 text-xs text-muted">
                       {memory.contributor_name}
-                      {memory.memory_date ? ` · ${formatDate(memory.memory_date, memory.date_precision, locale)}` : ''}
+                      {memory.memory_date
+                        ? ` · ${formatDate(memory.memory_date, memory.date_precision, locale)}`
+                        : ''}
                     </p>
                   </Link>
                 </li>
@@ -305,20 +309,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             </ul>
           )}
         </section>
-      </main>
-    </>
-  );
-}
-
-function Fact({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
-  if (!value) return null;
-  return (
-    <div className="flex items-baseline gap-3 px-4 py-3">
-      <dt className="w-28 shrink-0 text-sm text-muted">{label}</dt>
-      <dd className="flex min-w-0 flex-1 items-center gap-1.5 text-sm text-ink">
-        {icon ? <span className="text-gold">{icon}</span> : null}
-        <span className="truncate">{value}</span>
-      </dd>
-    </div>
+      </div>
+    </main>
   );
 }

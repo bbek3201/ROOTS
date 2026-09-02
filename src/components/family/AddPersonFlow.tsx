@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { describeRpcError } from '@/lib/supabase/errors';
 import { buildFamilyIndex, getCouples } from '@/lib/relationships/graph';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -126,7 +127,7 @@ export function AddPersonFlow({ familyId, graph }: { familyId: string; graph: Fa
           ? 'Танд хүн нэмэх эрх байхгүй байна.'
           : message.includes('ancestor')
             ? 'Энэ холболт нь хүнийг өөрийнх нь өвөг дээдэс болгож байна.'
-            : 'Хадгалахад алдаа гарлаа. Дахин оролдоно уу.',
+            : describeRpcError(caught, 'Хадгалахад алдаа гарлаа. Дахин оролдоно уу.'),
       );
       setSaving(false);
     }
@@ -161,7 +162,7 @@ export function AddPersonFlow({ familyId, graph }: { familyId: string; graph: Fa
           </div>
         </Card>
       ) : (
-        <Card className="border-gold/30 bg-gold-wash">
+        <Card className="border-olive/30 bg-olive-wash">
           <p className="font-display text-base text-ink">Эхний хүн</p>
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">
             Хамгийн ахмад мэдэх хүнээсээ эхлэхийг зөвлөж байна — өвөө, элэнц өвөө. Тэндээс доош
@@ -211,7 +212,7 @@ export function AddPersonFlow({ familyId, graph }: { familyId: string; graph: Fa
                 })}
               </SelectField>
             ) : (
-              <p className="rounded-xl bg-gold-wash px-3 py-2.5 text-sm text-ink-soft">
+              <p className="rounded-xl bg-olive-wash px-3 py-2.5 text-sm text-ink-soft">
                 Энэ хүнд хос бүртгэгдээгүй байна. Хадгалахад ганц эцэг/эхтэй хос автоматаар үүсгэж,
                 хүүхдийг холбоно. Дараа нь ханийг нь нэмж болно.
               </p>
@@ -288,10 +289,10 @@ function RelationChoice({
       aria-pressed={active}
       className={cn(
         'min-h-16 rounded-2xl border px-3 py-2.5 text-left transition-colors',
-        active ? 'border-ember bg-ember-wash' : 'border-line bg-surface',
+        active ? 'border-forest bg-forest-wash' : 'border-line bg-surface',
       )}
     >
-      <span className={cn('block text-sm font-medium', active ? 'text-ember' : 'text-ink')}>{title}</span>
+      <span className={cn('block text-sm font-medium', active ? 'text-forest' : 'text-ink')}>{title}</span>
       <span className="block text-xs text-muted">{detail}</span>
     </button>
   );

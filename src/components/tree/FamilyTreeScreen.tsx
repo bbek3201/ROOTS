@@ -16,11 +16,13 @@ export function FamilyTreeScreen({
   focusPersonId,
   locale,
   visibleGenerations,
+  photoUrls,
 }: {
   graph: FamilyGraph;
   focusPersonId: string | null;
   locale: string;
   visibleGenerations: number;
+  photoUrls?: Record<string, string>;
 }) {
   const router = useRouter();
   return (
@@ -29,7 +31,9 @@ export function FamilyTreeScreen({
       focusPersonId={focusPersonId}
       locale={locale}
       visibleGenerations={visibleGenerations}
+      photoUrls={photoUrls}
       onOpenPerson={(personId) => router.push(`/person/${personId}`)}
+      onOpenCouple={(coupleId) => router.push(`/couple/${coupleId}`)}
     />
   );
 }

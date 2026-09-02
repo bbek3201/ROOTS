@@ -33,9 +33,9 @@ export default async function InterviewIndexPage() {
       <AppHeader title="Ярилцлага" subtitle="Дуу хоолой, дурсамжийг хадгалах" />
 
       <main id="main" className="px-4 pb-8 pt-5">
-        <Card className="mb-5 border-ember/25 bg-ember-wash">
+        <Card className="mb-5 border-forest/25 bg-forest-wash">
           <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-ember">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-forest">
               <MicIcon size={20} />
             </span>
             <div>
@@ -95,7 +95,7 @@ export default async function InterviewIndexPage() {
                         </p>
                         <p className="truncate text-sm text-muted">{interview.title}</p>
                       </div>
-                      <Badge tone={interview.status === 'completed' ? 'sage' : 'ember'}>
+                      <Badge tone={interview.status === 'completed' ? 'sage' : 'forest'}>
                         {statusLabel(interview.status)}
                       </Badge>
                     </div>
@@ -110,7 +110,7 @@ export default async function InterviewIndexPage() {
                           aria-valuemax={interview.total}
                         >
                           <div
-                            className="h-full rounded-full bg-ember"
+                            className="h-full rounded-full bg-forest"
                             style={{ width: `${Math.round((interview.answered / interview.total) * 100)}%` }}
                           />
                         </div>

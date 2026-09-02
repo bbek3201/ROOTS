@@ -3,47 +3,74 @@
 /* ===========================================================================
    ROOTS design system
    ---------------------------------------------------------------------------
-   Warm, quiet and physical: the palette comes from old paper, sepia prints and
-   lamplight rather than from a SaaS dashboard. Nothing here is pure white or
-   pure black, because nothing in a family photograph is either.
+   The archive is the photographs. Everything here exists to get out of their
+   way: warm ivory paper, deep forest green, soft sage and muted olive, and no
+   colour bright enough to compete with a face.
 
-   Typography pairs a serif for names and headings — a family's names deserve
-   the weight of print — with a system sans for interface text. Both are local
-   font stacks: an archive must open on a bad connection in a ger in Khövsgöl,
-   and a webfont round trip is not worth a name rendering late.
+   Three rules the whole system rests on:
+     1. Photography first. A screen leads with an image at full width, and the
+        interface arranges itself around it rather than framing it in chrome.
+     2. Air before ornament. Space separates sections; borders and shadows are
+        a last resort, never a default.
+     3. Two voices in the type. A serif at display sizes for names, titles and
+        headlines — the things a family reads out loud — and a sans at small
+        sizes for metadata, which should recede.
+
+   Red appears exactly twice in the product: the bond between two people, and
+   a destructive action. It is a muted terracotta, not a signal red, because
+   this is an album and not a dashboard.
    =========================================================================== */
 
 @theme {
-  --font-display: ui-serif, Georgia, 'Times New Roman', 'Noto Serif', serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Roboto, Arial, sans-serif;
+  /* The loaded faces come from next/font (see app/layout.tsx). The stacks
+     behind them are what renders if a font file never arrives. */
+  --font-display: var(--font-display-loaded), ui-serif, Georgia, 'Noto Serif', serif;
+  --font-sans: var(--font-sans-loaded), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Roboto, Arial, sans-serif;
 
-  /* Warm neutrals — aged paper */
-  --color-parchment: #f7f2ea;
-  --color-parchment-deep: #efe6d9;
-  --color-surface: #fffdfa;
-  --color-ink: #1d1815;
-  --color-ink-soft: #4a4038;
-  --color-muted: #7a6d60;
-  --color-line: #e2d7c7;
+  /* Warm neutrals — ivory paper, warm beige, soft charcoal */
+  --color-parchment: #f5f2ea;
+  --color-parchment-deep: #eae4d7;
+  --color-surface: #fffefb;
+  --color-ink: #2a2e29;
+  --color-ink-soft: #4e544c;
+  --color-muted: #8b9089;
+  --color-line: #e9e4d8;
 
-  /* Accents — terracotta, lamplight gold, steppe sage */
-  --color-ember: #a8462a;
-  --color-ember-soft: #c9694a;
-  --color-ember-wash: #f6e7e0;
-  --color-gold: #b8873a;
-  --color-gold-wash: #f7efdd;
-  --color-sage: #5f7360;
-  --color-sage-wash: #e9efe8;
+  /* Greens — deep forest for weight, soft sage for calm, olive for metadata.
+     `sage` and `olive` are the text-safe depths; the `-soft` and `-wash`
+     variants are the fills that go under them. */
+  --color-forest: #1f3d2c;
+  --color-forest-ink: #f7f5ee;
+  --color-forest-soft: #2f5940;
+  --color-forest-tint: #cddbcf;
+  --color-forest-wash: #edf1ea;
+  --color-sage: #5f7a62;
+  --color-sage-soft: #a7bda7;
+  --color-sage-wash: #e9efe7;
+  --color-olive: #77855f;
+  --color-olive-wash: #eeeee1;
 
-  /* Semantic */
-  --color-danger: #a32e28;
-  --color-danger-wash: #f8e6e4;
+  /* Brand surface — the deep green panel of the sign-in and invite screens.
+     Deliberately absent from the dark-mode block: this pair is a printed
+     colour, like ink on a cover, and must not flip with the OS theme or the
+     ivory text on it would land on a light green ground. */
+  --color-brand-deep: #1c3527;
+  --color-brand-fg: #f3efe4;
 
-  --radius-card: 1.125rem;
+  /* Semantic — red only ever means "a bond" or "a danger", and stays muted */
+  --color-heart: #b4574c;
+  --color-danger: #a24a40;
+  --color-danger-wash: #f6e9e6;
+
+  --radius-card: 1.5rem;
+  --radius-photo: 1.25rem;
   --radius-pill: 999px;
 
-  --shadow-soft: 0 1px 2px rgb(29 24 21 / 0.05), 0 8px 24px -12px rgb(29 24 21 / 0.18);
-  --shadow-lift: 0 2px 6px rgb(29 24 21 / 0.07), 0 18px 40px -20px rgb(29 24 21 / 0.32);
+  /* Barely there. Depth comes from the warm page behind a lighter surface;
+     these only stop a floating element from sitting flat on it. */
+  --shadow-soft: 0 1px 2px rgb(42 46 41 / 0.03), 0 12px 28px -18px rgb(42 46 41 / 0.14);
+  --shadow-lift: 0 2px 6px rgb(42 46 41 / 0.05), 0 24px 48px -28px rgb(42 46 41 / 0.24);
+  --shadow-green: 0 10px 24px -14px rgb(31 61 44 / 0.5);
 }
 
 /* Dark mode is not an inversion — it is the same archive by lamplight.
@@ -53,33 +80,37 @@
    query, which is why this block is plain CSS. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-parchment: #17130f;
-    --color-parchment-deep: #100d0a;
-    --color-surface: #221c17;
-    --color-ink: #f2e9dc;
-    --color-ink-soft: #d8cabb;
-    --color-muted: #a0917f;
-    --color-line: #382e26;
+    --color-parchment: #141713;
+    --color-parchment-deep: #0d100c;
+    --color-surface: #1c211b;
+    --color-ink: #eeefe9;
+    --color-ink-soft: #cbd0c6;
+    --color-muted: #949a90;
+    --color-line: #2d332c;
 
-    --color-ember: #d9714f;
-    --color-ember-soft: #b0563a;
-    --color-ember-wash: #33201a;
-    --color-gold: #d3a35f;
-    --color-gold-wash: #2e2517;
-    --color-sage: #8fa78f;
-    --color-sage-wash: #1e2620;
+    --color-forest: #8fb497;
+    --color-forest-ink: #10160f;
+    --color-forest-soft: #7ba384;
+    --color-forest-tint: #26332a;
+    --color-forest-wash: #1b241c;
+    --color-sage: #a3bda4;
+    --color-sage-soft: #46583f;
+    --color-sage-wash: #1d251d;
+    --color-olive: #b3bf94;
+    --color-olive-wash: #23271a;
 
-    --color-danger: #e0736c;
-    --color-danger-wash: #331d1c;
+    --color-heart: #d4796d;
+    --color-danger: #d4796d;
+    --color-danger-wash: #2b1d1a;
 
     --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px -12px rgb(0 0 0 / 0.6);
     --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px -20px rgb(0 0 0 / 0.7);
+    --shadow-green: 0 8px 20px -10px rgb(0 0 0 / 0.6);
   }
 
   body {
     background-image:
-      radial-gradient(circle at 15% 10%, rgb(211 163 95 / 0.06), transparent 45%),
-      radial-gradient(circle at 85% 85%, rgb(217 113 79 / 0.05), transparent 50%);
+      radial-gradient(circle at 50% -10%, rgb(143 180 151 / 0.07), transparent 55%);
   }
 }
 
@@ -105,14 +136,16 @@ body {
   overscroll-behavior-y: none;
   /* A faint grain so large empty areas read as paper, not as a blank screen. */
   background-image:
-    radial-gradient(circle at 15% 10%, rgb(184 135 58 / 0.05), transparent 45%),
-    radial-gradient(circle at 85% 85%, rgb(168 70 42 / 0.045), transparent 50%);
+    radial-gradient(circle at 50% -10%, rgb(95 122 98 / 0.07), transparent 55%);
   background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, .font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.015em;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
 }
 
 /* Respect the platform's motion preference everywhere, not per component. */
@@ -127,7 +160,7 @@ h1, h2, h3, .font-display {
 
 /* A visible focus ring is an accessibility requirement, not a style choice. */
 :focus-visible {
-  outline: 2px solid var(--color-ember);
+  outline: 2px solid var(--color-forest);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -141,6 +174,51 @@ h1, h2, h3, .font-display {
   border: 1px solid var(--color-line);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-soft);
+}
+
+/* A quiet band rather than a card: a ground without an outline, which is what
+   most sections need once photographs are doing the work. */
+@utility panel {
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  border-radius: var(--radius-card);
+}
+
+/* The ground a photograph sits on — what shows while it loads, and what shows
+   when the family never had one. Warm, never grey. */
+@utility photo-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-photo);
+  background: linear-gradient(150deg, var(--color-parchment-deep), var(--color-sage-wash));
+  isolation: isolate;
+}
+
+/* Text over a photograph needs a floor to stand on. Several stops rather than
+   one so the darkening starts late and the faces stay untouched. */
+@utility photo-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgb(18 22 17 / 0.74) 0%,
+    rgb(18 22 17 / 0.40) 26%,
+    rgb(18 22 17 / 0.06) 56%,
+    transparent 100%
+  );
+}
+
+/* Small-caps metadata: dates, roles, section labels. */
+@utility eyebrow {
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--color-olive);
+}
+
+/* Reading measure for a story someone told. */
+@utility measure {
+  max-width: 62ch;
 }
 
 @utility safe-bottom {

@@ -66,7 +66,7 @@ export function TreePreview({
 
       <Link
         href="/family/tree"
-        className="block border-t border-line bg-parchment-deep/60 px-4 py-3 text-center text-sm font-medium text-ember"
+        className="block border-t border-line bg-parchment-deep/60 px-4 py-3 text-center text-sm font-medium text-forest"
       >
         Бүтэн модыг үзэх
       </Link>

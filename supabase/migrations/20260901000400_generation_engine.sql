@@ -275,7 +275,7 @@ declare
 begin
   select * into v_couple from public.couples where id = p_couple_id and deleted_at is null;
   if not found then
-    raise exception 'couple % not found' using errcode = 'P0002';
+    raise exception 'couple % not found', p_couple_id using errcode = 'P0002';
   end if;
 
   perform roots.require_edit(v_couple.family_id);
@@ -334,7 +334,7 @@ declare
 begin
   select * into v_couple from public.couples where id = p_couple_id and deleted_at is null;
   if not found then
-    raise exception 'couple % not found' using errcode = 'P0002';
+    raise exception 'couple % not found', p_couple_id using errcode = 'P0002';
   end if;
 
   perform roots.require_edit(v_couple.family_id);

@@ -68,7 +68,7 @@ export function SearchScreen({
               placeholder="Нэр, дурсамж, ярианы бичвэрээс хайх…"
               aria-label="Архиваас хайх"
               autoFocus
-              className="min-h-12 w-full rounded-full border border-line bg-surface px-4 text-[16px] text-ink placeholder:text-muted/70 focus:border-ember focus:outline-none"
+              className="min-h-12 w-full rounded-full border border-line bg-surface px-4 text-[16px] text-ink placeholder:text-muted/70 focus:border-forest focus:outline-none"
             />
           </form>
 
@@ -99,7 +99,7 @@ export function SearchScreen({
                       <p className="mt-1.5 line-clamp-2 text-sm text-ink-soft">{result.snippet}</p>
                     ) : null}
                     {result.event_date ? (
-                      <p className="mt-1.5 text-xs text-gold">{yearOf(result.event_date)}</p>
+                      <p className="mt-1.5 text-xs text-olive">{yearOf(result.event_date)}</p>
                     ) : null}
                   </Link>
                 </li>
@@ -110,12 +110,12 @@ export function SearchScreen({
       ) : (
         <>
           {!hasSelfLink ? (
-            <Card className="border-gold/30 bg-gold-wash">
+            <Card className="border-olive/30 bg-olive-wash">
               <p className="text-sm leading-relaxed text-ink-soft">
                 «Аав минь хэн бэ?» гэх мэт асуултад хариулахын тулд та өөрийгөө гэр бүлийн модны
                 аль хүн болохыг Профайл хэсгээс сонгоно уу.
               </p>
-              <Link href="/profile" className="mt-2 inline-block text-sm font-medium text-ember">
+              <Link href="/profile" className="mt-2 inline-block text-sm font-medium text-forest">
                 Профайл руу очих →
               </Link>
             </Card>
@@ -138,7 +138,7 @@ function TabButton({
       onClick={onClick}
       className={cn(
         'flex-1 rounded-pill border px-4 py-2.5 text-sm font-medium transition-colors',
-        active ? 'border-ember bg-ember text-white' : 'border-line bg-surface text-ink-soft',
+        active ? 'border-forest bg-forest text-forest-ink' : 'border-line bg-surface text-ink-soft',
       )}
     >
       {children}
@@ -162,11 +162,11 @@ function typeLabel(type: string): string {
   return labels[type] ?? type;
 }
 
-function toneFor(type: string): 'neutral' | 'ember' | 'gold' | 'sage' {
+function toneFor(type: string): 'neutral' | 'forest' | 'olive' | 'sage' {
   switch (type) {
     case 'person': return 'sage';
-    case 'memory': return 'gold';
-    case 'transcript': return 'ember';
+    case 'memory': return 'olive';
+    case 'transcript': return 'forest';
     default: return 'neutral';
   }
 }

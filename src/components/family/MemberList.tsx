@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { describeRpcError } from '@/lib/supabase/errors';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { relativeTime } from '@/lib/format';
@@ -42,7 +43,7 @@ export function MemberList({
     const supabase = createClient();
     const { error: updateError } = await supabase
       .from('family_members').update({ role }).eq('id', memberId);
-    if (updateError) setError('Эрх өөрчлөхөд алдаа гарлаа.');
+    if (updateError) setError(describeRpcError(updateError, 'Эрх өөрчлөхөд алдаа гарлаа.'));
     setBusyId(null);
     router.refresh();
   };
@@ -52,7 +53,7 @@ export function MemberList({
     setError(null);
     const supabase = createClient();
     const { error: deleteError } = await supabase.from('family_members').delete().eq('id', memberId);
-    if (deleteError) setError('Гишүүнийг хасахад алдаа гарлаа.');
+    if (deleteError) setError(describeRpcError(deleteError, 'Гишүүнийг хасахад алдаа гарлаа.'));
     setBusyId(null);
     router.refresh();
   };
@@ -92,7 +93,7 @@ export function MemberList({
                       disabled={busyId === member.id}
                       onChange={(event) => changeRole(member.id, event.target.value as FamilyRole)}
                       aria-label={`${member.name}-ийн эрх`}
-                      className="min-h-10 flex-1 rounded-xl border border-line bg-surface px-3 text-sm text-ink focus:border-ember focus:outline-none"
+                      className="min-h-10 flex-1 rounded-xl border border-line bg-surface px-3 text-sm text-ink focus:border-forest focus:outline-none"
                     >
                       {ASSIGNABLE.map((role) => (
                         <option key={role} value={role}>{ROLE_LABELS[role]}</option>

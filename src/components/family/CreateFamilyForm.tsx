@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { describeRpcError } from '@/lib/supabase/errors';
 import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/Field';
 
@@ -31,7 +32,7 @@ export function CreateFamilyForm() {
     });
 
     if (rpcError || !data) {
-      setError('Гэр бүл үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.');
+      setError(describeRpcError(rpcError, 'Гэр бүл үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.'));
       setLoading(false);
       return;
     }

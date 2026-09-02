@@ -4,8 +4,8 @@ import { cn } from '@/lib/cn';
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 
 const CONTROL =
-  'w-full rounded-xl border border-line bg-surface px-3.5 py-3 text-base text-ink ' +
-  'placeholder:text-muted/70 transition-colors focus:border-ember focus:outline-none ' +
+  'w-full rounded-2xl border border-line bg-surface px-4 py-3.5 text-base text-ink ' +
+  'placeholder:text-muted transition-colors focus:border-sage focus:outline-none ' +
   // 16px minimum font size: anything smaller makes iOS Safari zoom on focus.
   'text-[16px]';
 
@@ -16,9 +16,9 @@ function Wrapper({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium text-ink-soft">
+      <label htmlFor={id} className="block text-sm text-ink-soft">
         {label}
-        {required ? <span className="ml-1 text-ember" aria-hidden="true">*</span> : null}
+        {required ? <span className="ml-1 text-forest" aria-hidden="true">*</span> : null}
       </label>
       {children}
       {error ? (
@@ -31,20 +31,36 @@ function Wrapper({
 }
 
 export function TextField({
-  label, hint, error, required, className, ...props
-}: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string; error?: string }) {
+  label, hint, error, required, className, trailing, ...props
+}: InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  hint?: string;
+  error?: string;
+  /** A control inside the field's right edge — a password reveal, a unit. */
+  trailing?: ReactNode;
+}) {
   const generatedId = useId();
   const id = props.id ?? generatedId;
+  const input = (
+    <input
+      {...props}
+      id={id}
+      required={required}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
+      className={cn(CONTROL, error && 'border-danger', trailing ? 'pr-12' : undefined, className)}
+    />
+  );
   return (
     <Wrapper label={label} hint={hint} error={error} id={id} required={required}>
-      <input
-        {...props}
-        id={id}
-        required={required}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
-        className={cn(CONTROL, error && 'border-danger', className)}
-      />
+      {trailing ? (
+        <div className="relative">
+          {input}
+          <div className="absolute inset-y-0 right-1.5 flex items-center">{trailing}</div>
+        </div>
+      ) : (
+        input
+      )}
     </Wrapper>
   );
 }

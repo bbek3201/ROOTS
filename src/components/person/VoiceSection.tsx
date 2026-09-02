@@ -71,7 +71,7 @@ export function VoiceSection({
               onClick={() => toggle(recording)}
               disabled={!recording.url}
               aria-label={playingId === recording.id ? 'Зогсоох' : 'Сонсох'}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ember text-white disabled:opacity-40"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-forest text-forest-ink disabled:opacity-40"
             >
               {playingId === recording.id ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
             </button>
@@ -86,7 +86,7 @@ export function VoiceSection({
               </p>
             </div>
 
-            <SpeakerIcon size={18} className="shrink-0 text-gold" />
+            <SpeakerIcon size={18} className="shrink-0 text-olive" />
           </li>
         ))}
       </ul>
