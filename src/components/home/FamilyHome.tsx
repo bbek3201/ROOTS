@@ -5,6 +5,7 @@ import { Lineage, type LineageBand } from '@/components/home/Lineage';
 import { Mosaic, type MosaicItem } from '@/components/home/Mosaic';
 import { Voices, type VoiceEntry } from '@/components/home/Voices';
 import { News, type NewsEntry } from '@/components/home/News';
+import { CoupleCard, type CoupleCardProps } from '@/components/home/CoupleCard';
 
 /**
  * The family home, as a picture.
@@ -59,6 +60,12 @@ export interface FamilyHomeProps {
   voices: VoiceEntry[];
   /** Added since this member last opened the family. Empty means a quiet week. */
   news: NewsEntry[];
+  /**
+   * The viewer's own couple space, if they have one. Null for everybody else —
+   * including for a family owner looking at a page that has one, because the
+   * existence of a couple's private space is not the family's business.
+   */
+  couple: CoupleCardProps | null;
   interview: { href: string; label: string };
   closingSrc: string | null;
 }
@@ -76,6 +83,7 @@ export function FamilyHome({
   gallery,
   voices,
   news,
+  couple,
   interview,
   closingSrc,
 }: FamilyHomeProps) {
@@ -231,6 +239,9 @@ export function FamilyHome({
           </div>
         </section>
       ) : null}
+
+      {/* ================= The two of them ================================= */}
+      {couple ? <CoupleCard {...couple} /> : null}
 
       {/* ================= Lineage ========================================= */}
       {bands.length > 0 ? (

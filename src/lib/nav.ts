@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from 'react';
 import {
   ClockIcon,
+  HeartIcon,
   HomeIcon,
   MemoryIcon,
   MicIcon,
@@ -56,6 +57,15 @@ export const DESTINATIONS: readonly NavItem[] = [
   { href: '/memories', label: 'Дурсамж', short: 'Дурсамж', Icon: MemoryIcon },
   { href: '/timeline', label: 'Он цаг', short: 'Он цаг', Icon: ClockIcon },
   { href: '/interview', label: 'Түүхүүд', short: 'Түүх', Icon: MicIcon },
+  {
+    href: '/us',
+    label: 'Хоёулаа',
+    short: 'Хоёул',
+    Icon: HeartIcon,
+    // Everything under /us belongs here — the whole private space is one
+    // destination, however many rooms it has.
+    also: ['/us/join'],
+  },
 ] as const;
 
 /** Things you do rather than places you go. Icons in the header, all widths. */
@@ -78,13 +88,20 @@ export const ACTIONS: readonly NavItem[] = [
 ] as const;
 
 /**
- * The five tabs a thumb can reach. Түүхүүд is the one destination missing here
- * — an interview is nearly always opened from the person being interviewed or
- * from the prompt on the home screen, and a sixth tab would cost every other
- * tab its label. It keeps its place in the header and in the menu.
+ * The five tabs a thumb can reach.
+ *
+ * Түүхүүд and Хоёулаа are the two destinations missing here. An interview is
+ * nearly always opened from the person being interviewed or from the prompt on
+ * the home screen; the couple space is opened from its own card on the home
+ * screen, and it is a place one person goes rather than a place the family
+ * lives. A tab bar of seven costs every tab its label, which would make all
+ * five of the common destinations harder to hit in order to surface two rare
+ * ones. Both keep their place in the header and in the menu.
  */
+const NOT_IN_TAB_BAR = new Set(['/interview', '/us']);
+
 export const TAB_BAR: readonly NavItem[] = [
-  ...DESTINATIONS.filter((item) => item.href !== '/interview'),
+  ...DESTINATIONS.filter((item) => !NOT_IN_TAB_BAR.has(item.href)),
   UTILITIES[1] as NavItem,
 ];
 

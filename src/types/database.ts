@@ -331,6 +331,163 @@ export type PhotoPersonTagRow = {
   created_at: string;
 };
 
+// ---------------------------------------------------------------------------
+// Couple space — the private half of ROOTS
+// ---------------------------------------------------------------------------
+// These mirror supabase/migrations/20260904000300_couple_spaces.sql. They are
+// deliberately NOT reusing MemoryRow or MediaRow: the family tables and the
+// couple tables carry different access rules, and a shared type would make it
+// easy to hand a row from one to a function written for the other.
+
+/** The nine "firsts" a couple can fill in. Fixed, so the cards have an order. */
+export type CoupleFirstKey =
+  | 'meeting' | 'date' | 'photo' | 'trip' | 'gift' | 'movie'
+  | 'i_love_you' | 'anniversary' | 'home';
+
+export type CoupleSpaceRow = {
+  id: string;
+  family_id: string;
+  couple_id: string;
+  /** "Together since" — usually earlier than the wedding. */
+  started_on: string | null;
+  how_we_met: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+export type CoupleSpaceMemberRow = {
+  id: string;
+  space_id: string;
+  user_id: string;
+  person_id: string | null;
+  joined_at: string;
+};
+
+export type CoupleInvitationRow = {
+  id: string;
+  space_id: string;
+  token_hash: string;
+  invited_by: string | null;
+  for_person_id: string | null;
+  expires_at: string;
+  accepted_at: string | null;
+  accepted_by: string | null;
+  revoked_at: string | null;
+  created_at: string;
+};
+
+export type CoupleMediaRow = {
+  id: string;
+  space_id: string;
+  kind: MediaKind;
+  storage_bucket: string;
+  storage_path: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  width: number | null;
+  height: number | null;
+  duration_seconds: number | null;
+  caption: string | null;
+  taken_at: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+  deleted_at: string | null;
+};
+
+export type CoupleMemoryRow = {
+  id: string;
+  space_id: string;
+  created_by: string | null;
+  title: string;
+  description: string | null;
+  memory_date: string | null;
+  date_precision: DatePrecision;
+  location_id: string | null;
+  place_label: string | null;
+  mood: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+export type CoupleMemoryMediaRow = {
+  memory_id: string;
+  media_id: string;
+  position: number;
+};
+
+export type CoupleLetterRow = {
+  id: string;
+  space_id: string;
+  sender_id: string;
+  title: string;
+  /** Null means readable now. */
+  unlock_at: string | null;
+  media_id: string | null;
+  read_at: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+/** The sealed half. A row that comes back at all is a row you may read. */
+export type CoupleLetterBodyRow = { letter_id: string; body: string };
+
+export type CoupleFutureMessageRow = {
+  id: string;
+  space_id: string;
+  created_by: string | null;
+  title: string;
+  unlock_at: string;
+  media_id: string | null;
+  opened_at: string | null;
+  created_at: string;
+  deleted_at: string | null;
+};
+
+export type CoupleFutureMessageBodyRow = { message_id: string; body: string };
+
+export type CouplePlaceRow = {
+  id: string;
+  space_id: string;
+  name: string;
+  location_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  visited_on: string | null;
+  notes: string | null;
+  media_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  deleted_at: string | null;
+};
+
+export type CoupleFirstRow = {
+  id: string;
+  space_id: string;
+  key: CoupleFirstKey;
+  happened_on: string | null;
+  story: string | null;
+  media_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CoupleVoiceMemoryRow = {
+  id: string;
+  space_id: string;
+  media_id: string;
+  title: string;
+  description: string | null;
+  recorded_on: string | null;
+  created_by: string | null;
+  created_at: string;
+  deleted_at: string | null;
+};
+
 export type LifeEventRow = {
   id: string;
   family_id: string;
@@ -614,6 +771,19 @@ export type Database = {
       audio_recordings: Table<AudioRecordingRow, 'media_id' | 'family_id'>;
       documents: Table<DocumentRow, 'media_id' | 'family_id'>;
       photo_people_tags: Table<PhotoPersonTagRow, 'family_id' | 'media_id' | 'person_id'>;
+      couple_spaces: Table<CoupleSpaceRow, 'family_id' | 'couple_id'>;
+      couple_space_members: Table<CoupleSpaceMemberRow, 'space_id' | 'user_id'>;
+      couple_invitations: Table<CoupleInvitationRow, 'space_id' | 'token_hash'>;
+      couple_media: Table<CoupleMediaRow, 'space_id' | 'kind' | 'storage_path'>;
+      couple_memories: Table<CoupleMemoryRow, 'space_id' | 'title'>;
+      couple_memory_media: Table<CoupleMemoryMediaRow, 'memory_id' | 'media_id'>;
+      couple_letters: Table<CoupleLetterRow, 'space_id' | 'sender_id' | 'title'>;
+      couple_letter_bodies: Table<CoupleLetterBodyRow, 'letter_id' | 'body'>;
+      couple_future_messages: Table<CoupleFutureMessageRow, 'space_id' | 'title' | 'unlock_at'>;
+      couple_future_message_bodies: Table<CoupleFutureMessageBodyRow, 'message_id' | 'body'>;
+      couple_places: Table<CouplePlaceRow, 'space_id' | 'name'>;
+      couple_firsts: Table<CoupleFirstRow, 'space_id' | 'key'>;
+      couple_voice_memories: Table<CoupleVoiceMemoryRow, 'space_id' | 'media_id' | 'title'>;
       life_events: Table<LifeEventRow, 'family_id' | 'title'>;
       timeline_events: Table<TimelineEventRow, 'family_id' | 'title'>;
       interview_question_sets: Table<InterviewQuestionSetRow, 'key' | 'title'>;
@@ -732,6 +902,18 @@ export type Database = {
       /** Marks this visit and returns the PREVIOUS mark, which is what "new since" means. */
       touch_last_seen: { Args: { p_family_id: string }; Returns: string | null };
       set_family_locale: { Args: { p_family_id: string; p_locale: string }; Returns: undefined };
+      create_couple_space: {
+        Args: { p_couple_id: string; p_started_on?: string | null; p_how_we_met?: string | null };
+        Returns: string;
+      };
+      invite_to_couple_space: { Args: { p_space_id: string }; Returns: string };
+      preview_couple_invitation: {
+        Args: { p_token: string };
+        Returns: Array<{ space_id: string; inviter_name: string; partner_name: string; expires_at: string }>;
+      };
+      accept_couple_invitation: { Args: { p_token: string }; Returns: string };
+      open_future_message: { Args: { p_id: string }; Returns: undefined };
+      mark_letter_read: { Args: { p_id: string }; Returns: undefined };
       export_family: { Args: { p_family_id: string }; Returns: Json };
       delete_memory: { Args: { p_memory_id: string }; Returns: undefined };
       delete_family: { Args: { p_family_id: string; p_confirm_name: string }; Returns: undefined };

@@ -10,7 +10,13 @@ import { MEDIA_BUCKET } from './constants';
 /** How long a media link stays valid. Short, because links get forwarded. */
 const SIGNED_URL_TTL_SECONDS = 60 * 10;
 
-export type MediaScope = 'people' | 'memories' | 'photos' | 'videos' | 'audio' | 'documents' | 'interviews';
+export type MediaScope =
+  | 'people' | 'memories' | 'photos' | 'videos' | 'audio' | 'documents' | 'interviews'
+  // The couple space's private prefix. The storage policies carve this OUT of
+  // the family's read grant and hand it to the two partners instead, so the
+  // literal string here is load-bearing: change it and private photographs
+  // become family photographs.
+  | 'couple-space';
 
 /**
  * Build a storage path.
@@ -19,6 +25,12 @@ export type MediaScope = 'people' | 'memories' | 'photos' | 'videos' | 'audio' |
  *   families/{family_id}/...   — the storage policies read family_id from
  *                                segment 2, so a path that does not start this
  *                                way is rejected before any bytes are written.
+ *   .../couple-space/{space_id}/...
+ *                              — segment 3 and 4. The family read policy
+ *                                explicitly excludes this prefix and a separate
+ *                                policy grants the couple, which is what makes
+ *                                a private photograph actually private rather
+ *                                than merely undisplayed.
  *   .../original/... vs .../derived/...
  *                              — updates and deletes are only permitted under
  *                                derived/, which is how "never overwrite an

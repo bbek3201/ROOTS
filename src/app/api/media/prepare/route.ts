@@ -12,7 +12,10 @@ const bodySchema = z.object({
   filename: z.string().min(1).max(255),
   mimeType: z.string().min(3).max(120),
   sizeBytes: z.number().int().nonnegative(),
-  scope: z.enum(['people', 'memories', 'photos', 'videos', 'audio', 'documents', 'interviews']),
+  scope: z.enum([
+    'people', 'memories', 'photos', 'videos', 'audio', 'documents', 'interviews',
+    'couple-space',
+  ]),
   scopeId: z.string().uuid().nullable().optional(),
 });
 
@@ -33,6 +36,22 @@ export async function POST(request: Request) {
 
     const active = await getActiveFamily();
     const membership = await assertFamilyAccess(body.familyId ?? active?.family_id, 'contributor');
+
+    // A couple-space path is only mintable by someone in that space. Without
+    // this the route would happily sign an upload URL into another couple's
+    // private prefix — the storage policy would refuse the write, but the
+    // refusal would arrive after the file picker, not before it.
+    if (body.scope === 'couple-space') {
+      if (!body.scopeId) throw new AccessError('Хосын орон зай заагаагүй байна.', 400);
+      const client = await createClient();
+      const { data: space } = await client
+        .from('couple_spaces')
+        .select('id')
+        .eq('id', body.scopeId)
+        .is('deleted_at', null)
+        .maybeSingle();
+      if (!space) throw new AccessError('Олдсонгүй.', 404);
+    }
 
     const kind = kindForMimeType(body.mimeType);
     if (!kind) {

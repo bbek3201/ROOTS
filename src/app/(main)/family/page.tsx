@@ -1,6 +1,9 @@
 import { requireActiveFamily } from '@/lib/family-context';
 import { can } from '@/lib/auth/session';
 import { getJoinCode } from '@/lib/data/join-code';
+import { getMyCoupleSpace } from '@/lib/couple/space';
+import { coupleCounts } from '@/lib/data/couple-space';
+import { togetherFor } from '@/lib/couple/timeline';
 import { getFamilyActivity, getFamilyGraph, getFamilyHome, getMediaPaths, markFamilySeen } from '@/lib/data/family';
 import { listMemories } from '@/lib/data/memories';
 import { listInterviews } from '@/lib/data/interviews';
@@ -44,6 +47,11 @@ export default async function FamilyHomePage() {
     can(membership, 'administer') ? getJoinCode(familyId) : Promise.resolve(null),
     getFamilyActivity(familyId, { since: lastSeen, limit: 12 }),
   ]);
+
+  // The viewer's own couple space. RLS means this is null for anyone who is not
+  // in one, so the card cannot be rendered for a relative looking at the page.
+  const mySpace = await getMyCoupleSpace();
+  const spaceCounts = mySpace ? await coupleCounts(mySpace.space.id) : null;
 
   const index = buildFamilyIndex(graph);
   const generations = new Set(graph.people.map((person) => person.generation ?? 0)).size;
@@ -193,6 +201,23 @@ export default async function FamilyHomePage() {
       gallery={gallery}
       voices={voices}
       news={news}
+      couple={
+        mySpace && spaceCounts
+          ? {
+              names: [
+                displayName(mySpace.partners[0]),
+                mySpace.partners[1] ? displayName(mySpace.partners[1]) : 'Танай хүн',
+              ],
+              together: togetherFor(mySpace.space.started_on),
+              counts: {
+                memories: spaceCounts.memories,
+                letters: spaceCounts.letters,
+                places: spaceCounts.places,
+              },
+              waiting: !mySpace.partnerJoined,
+            }
+          : null
+      }
       interview={{
         href: home.resumableInterview ? `/interview/${home.resumableInterview.id}` : '/interview',
         label: home.resumableInterview ? 'Ярилцлагаа үргэлжлүүлэх' : 'Ярилцлага эхлүүлэх',

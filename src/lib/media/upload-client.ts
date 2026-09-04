@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/client';
 import { MEDIA_BUCKET } from './constants';
 import { fetchWithRetry, PermanentError, retry } from './retry';
 
-export type UploadScope = 'people' | 'memories' | 'photos' | 'videos' | 'audio' | 'documents' | 'interviews';
+export type UploadScope =
+  | 'people' | 'memories' | 'photos' | 'videos' | 'audio' | 'documents' | 'interviews'
+  | 'couple-space';
 
 export interface UploadResult {
   mediaId: string;
