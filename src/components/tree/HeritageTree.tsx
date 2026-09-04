@@ -79,8 +79,31 @@ export function HeritageTree({
         <hr className="border-t border-[var(--hx-hair)]" />
       </div>
 
+      {/* ================= Nobody in the tree yet ========================= */}
+      {/* The empty state lives INSIDE the heritage surface rather than on the
+          paper above it. An archive that is honestly empty should still look
+          like the room it is going to fill — and the first person is added from
+          the same screen the tree will appear on, not from a different one. */}
+      {levels.length === 0 ? (
+        <section className="ed-shell py-20 text-center lg:py-28">
+          <p aria-hidden="true" className="text-3xl">🌱</p>
+          <h3 className="ed-display ed-display-md mx-auto mt-6 max-w-[20ch] text-balance text-[var(--hx-text)]">
+            Энэ мод хараахан ургаагүй байна
+          </h3>
+          <p className="mx-auto mt-5 max-w-[38ch] leading-relaxed text-[var(--hx-muted)]">
+            Хамгийн ахмад хүнээсээ эхэлье. Хос, хүүхдүүдийг нэмэхэд ураг төрлийн
+            холбоо өөрөө бүрдэнэ.
+          </p>
+          {canEdit ? (
+            <Link href="/family/add-person" className="hx-btn mt-8">
+              <span aria-hidden="true">✨</span> Эхний хүнээ нэмэх
+            </Link>
+          ) : null}
+        </section>
+      ) : null}
+
       {/* ================= The bands ====================================== */}
-      <section className="ed-shell py-14 lg:py-20">
+      <section className={levels.length === 0 ? 'hidden' : 'ed-shell py-14 lg:py-20'}>
         {levels.map((level, position) => (
           <div key={level.depth}>
             <p className="hx-eyebrow">
@@ -180,9 +203,11 @@ export function HeritageTree({
           thumb eats the page's scroll. */}
       <section className="ed-shell py-14 lg:py-20">
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <button type="button" onClick={() => setCanvasOpen((open) => !open)} className="hx-btn">
-            <span aria-hidden="true">🔍</span> {canvasOpen ? 'Модыг хаах' : 'Бүтэн мод'}
-          </button>
+          {levels.length > 0 ? (
+            <button type="button" onClick={() => setCanvasOpen((open) => !open)} className="hx-btn">
+              <span aria-hidden="true">🔍</span> {canvasOpen ? 'Модыг хаах' : 'Бүтэн мод'}
+            </button>
+          ) : null}
 
           {canEdit ? (
             <Link href="/family/add-person" className="hx-btn">

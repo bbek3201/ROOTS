@@ -4,8 +4,6 @@ import { can } from '@/lib/auth/session';
 import { getFamilyGraph, getMediaPaths } from '@/lib/data/family';
 import { getCoupleArchive } from '@/lib/data/couples';
 import { getSignedUrls } from '@/lib/media/storage';
-import { EmptyState } from '@/components/ui/States';
-import { TreeIcon } from '@/components/icons';
 import { FamilyCoverButton } from '@/components/family/FamilyCoverButton';
 import { FamilyStoryEditor } from '@/components/family/FamilyStoryEditor';
 import { FamilyTreeScreen } from '@/components/tree/FamilyTreeScreen';
@@ -254,34 +252,21 @@ export default async function FamilyTreePage() {
           is the only screen you look INTO rather than read, and a dark ground
           is what lets seven generations of small portraits sit in one field
           without the page glaring between them. */}
-      {graph.people.length === 0 ? (
-        <section className="ed-shell py-14 lg:py-20">
-          <div className="mx-auto max-w-md">
-            <EmptyState
-              icon={<TreeIcon size={30} />}
-              title="Мод хоосон байна"
-              description="Эхний хосоо нэмснээр гэр бүлийн мод ургаж эхэлнэ."
-              action={{ label: 'Хүн нэмэх', href: '/family/add-person' }}
-            />
-          </div>
-        </section>
-      ) : (
-        <HeritageTree
-          levels={levels}
-          deeper={deeperCount(index, bands)}
-          canEdit={canCurate}
-          hasStory={Boolean(story)}
-        >
-          <FamilyTreeScreen
-            graph={graph}
-            focusPersonId={membership.person_id}
-            locale={membership.family.default_locale}
-            visibleGenerations={membership.family.visible_generations}
-            photoUrls={photoUrls}
-            coupleArchive={coupleArchive}
-          />
-        </HeritageTree>
-      )}
+      <HeritageTree
+        levels={levels}
+        deeper={deeperCount(index, bands)}
+        canEdit={canCurate}
+        hasStory={Boolean(story)}
+      >
+        <FamilyTreeScreen
+          graph={graph}
+          focusPersonId={membership.person_id}
+          locale={membership.family.default_locale}
+          visibleGenerations={membership.family.visible_generations}
+          photoUrls={photoUrls}
+          coupleArchive={coupleArchive}
+        />
+      </HeritageTree>
 
       <section className="ed-shell py-12">
         <p>
