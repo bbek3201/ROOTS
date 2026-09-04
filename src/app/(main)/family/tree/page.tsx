@@ -9,8 +9,11 @@ import { TreeIcon } from '@/components/icons';
 import { FamilyCoverButton } from '@/components/family/FamilyCoverButton';
 import { FamilyStoryEditor } from '@/components/family/FamilyStoryEditor';
 import { FamilyTreeScreen } from '@/components/tree/FamilyTreeScreen';
+import { HeritageTree, type HeritageLevel } from '@/components/tree/HeritageTree';
 import type { CoupleArchive } from '@/components/tree/FamilyTree';
-import { yearOf } from '@/lib/format';
+import { buildAncestry, buildFromRoots, deeperCount } from '@/lib/tree/heritage';
+import { buildFamilyIndex } from '@/lib/relationships/graph';
+import { displayName, lifespan, yearOf } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +84,36 @@ export default async function FamilyTreePage() {
 
   const generations = new Set(graph.people.map((person) => person.generation ?? 0)).size;
   const span = lifeSpanOfFamily(graph.people);
+
+  // ---- The lineage, read outward from whoever is looking -------------------
+  // A member who has not been linked to a person in the tree still gets a view;
+  // theirs runs oldest-first from the roots, because there is no "you" to walk
+  // up from yet.
+  const index = buildFamilyIndex(graph);
+  const anchored = Boolean(membership.person_id);
+  const bands = anchored
+    ? buildAncestry(index, membership.person_id)
+    : buildFromRoots(index);
+
+  const levels: HeritageLevel[] = bands.map((band) => ({
+    depth: band.depth,
+    label: anchored ? BAND_LABELS[band.depth] ?? `${band.depth + 1}-р үе` : `${band.depth + 1}-р үе`,
+    mark: BAND_MARKS[band.depth] ?? '🌿',
+    cards: band.units.map((unit) => ({
+      id: unit.id,
+      href: unit.href,
+      paired: unit.paired,
+      people: unit.people.map((person) => ({
+        id: person.id,
+        name: displayName(person),
+        years: lifespan(person),
+        // Whatever the family actually recorded about them, in one line.
+        note: person.occupation ?? null,
+        photoUrl: photoUrls[person.id] ?? null,
+        initial: displayName(person).slice(0, 1),
+      })),
+    })),
+  }));
 
   return (
     <main id="main">
@@ -216,22 +249,14 @@ export default async function FamilyTreePage() {
         </section>
       ) : null}
 
-      {/* ================= The tree itself ================================= */}
-      <section className="ed-shell py-14 lg:py-20">
-        <header className="flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <p className="ed-eyebrow">Family tree</p>
-            <h2 className="ed-display ed-display-lg mt-5 max-w-[18ch]">
-              Хос бүрээс дараагийн үе.
-            </h2>
-          </div>
-          <p className="ed-meta max-w-sm">
-            Хосыг дарж дэлгэрэнгүйг үзнэ. Чирж, томруулж, үеийн дугаараар шилжинэ.
-          </p>
-        </header>
-
-        {graph.people.length === 0 ? (
-          <div className="mx-auto mt-12 max-w-md">
+      {/* ================= The lineage ===================================== */}
+      {/* The one dark surface in ROOTS, and the exception is deliberate: this
+          is the only screen you look INTO rather than read, and a dark ground
+          is what lets seven generations of small portraits sit in one field
+          without the page glaring between them. */}
+      {graph.people.length === 0 ? (
+        <section className="ed-shell py-14 lg:py-20">
+          <div className="mx-auto max-w-md">
             <EmptyState
               icon={<TreeIcon size={30} />}
               title="Мод хоосон байна"
@@ -239,20 +264,27 @@ export default async function FamilyTreePage() {
               action={{ label: 'Хүн нэмэх', href: '/family/add-person' }}
             />
           </div>
-        ) : (
-          <div className="ed-frame relative mt-12 h-[clamp(28rem,74svh,52rem)] border border-[color-mix(in_srgb,#183b32_10%,transparent)] bg-[#fffcf8]">
-            <FamilyTreeScreen
-              graph={graph}
-              focusPersonId={membership.person_id}
-              locale={membership.family.default_locale}
-              visibleGenerations={membership.family.visible_generations}
-              photoUrls={photoUrls}
-              coupleArchive={coupleArchive}
-            />
-          </div>
-        )}
+        </section>
+      ) : (
+        <HeritageTree
+          levels={levels}
+          deeper={deeperCount(index, bands)}
+          canEdit={canCurate}
+          hasStory={Boolean(story)}
+        >
+          <FamilyTreeScreen
+            graph={graph}
+            focusPersonId={membership.person_id}
+            locale={membership.family.default_locale}
+            visibleGenerations={membership.family.visible_generations}
+            photoUrls={photoUrls}
+            coupleArchive={coupleArchive}
+          />
+        </HeritageTree>
+      )}
 
-        <p className="mt-8">
+      <section className="ed-shell py-12">
+        <p>
           <Link
             href="/timeline"
             className="text-[0.95rem] text-[#183b32] underline decoration-[color-mix(in_srgb,#183b32_25%,transparent)] underline-offset-8 transition-colors hover:decoration-[#183b32]"
@@ -261,9 +293,21 @@ export default async function FamilyTreePage() {
           </Link>
         </p>
       </section>
+
     </main>
   );
 }
+
+/**
+ * What each band is called, counting outward from the viewer.
+ *
+ * Deliberately not "Generation 4": a person opening a family tree is not
+ * looking for a generation number, they are looking for their grandmother. Past
+ * great-grandparents the words run out in every language, so the numbering
+ * takes over — and by then the canvas is the better tool anyway.
+ */
+const BAND_LABELS = ['Би ба миний хайр', 'Бидний эцэг эх', 'Өвөө эмээ', 'Элэнц хуланц'] as const;
+const BAND_MARKS = ['💖', '🌿', '🍂', '🕯️'] as const;
 
 /**
  * The opening line of the story, for the cover.

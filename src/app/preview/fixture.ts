@@ -97,3 +97,54 @@ export const TIMELINE_ENTRIES = [
   { id: 't8', kind: 'voice' as const, title: 'Онгоцны буудал дээр', date: '2026-03-25', subtitle: null, href: '#', imageUrl: null },
   { id: 't9', kind: 'place' as const, title: 'Сөүл', date: '2026-07-05', subtitle: null, href: '#', imageUrl: null },
 ];
+
+/** The lineage bands, for the heritage tree preview. */
+export const HERITAGE_LEVELS = [
+  {
+    depth: 0, label: 'Би ба миний хайр', mark: '💖',
+    cards: [{
+      id: 'c0', href: '#', paired: true,
+      people: [
+        { id: 'p1', name: 'Билэг', years: '1996 –', note: 'Архитектор', photoUrl: PHOTOS[0]!, initial: 'Б' },
+        { id: 'p2', name: 'Сараа', years: '1997 –', note: 'Багш', photoUrl: PHOTOS[1]!, initial: 'С' },
+      ],
+    }],
+  },
+  {
+    depth: 1, label: 'Бидний эцэг эх', mark: '🌿',
+    cards: [
+      {
+        id: 'c1', href: '#', paired: true,
+        people: [
+          { id: 'p3', name: 'Дорж', years: '1968 –', note: 'Инженер', photoUrl: PHOTOS[2]!, initial: 'Д' },
+          { id: 'p4', name: 'Цэрэн', years: '1970 –', note: null, photoUrl: null, initial: 'Ц' },
+        ],
+      },
+      {
+        id: 'c2', href: '#', paired: true,
+        people: [
+          { id: 'p5', name: 'Ганбат', years: '1965 –', note: 'Малчин', photoUrl: null, initial: 'Г' },
+          { id: 'p6', name: 'Оюун', years: '1967 –', note: null, photoUrl: PHOTOS[3]!, initial: 'О' },
+        ],
+      },
+    ],
+  },
+  {
+    depth: 2, label: 'Өвөө эмээ', mark: '🍂',
+    cards: [
+      {
+        id: 'c3', href: '#', paired: true,
+        people: [
+          { id: 'p7', name: 'Бат', years: '1948 – 2019', note: 'Архангай', photoUrl: PHOTOS[4]!, initial: 'Б' },
+          { id: 'p8', name: 'Саруул', years: '1951 –', note: 'Гэр бүлийн түүхч', photoUrl: null, initial: 'С' },
+        ],
+      },
+      {
+        id: 'c4', href: '#', paired: false,
+        people: [
+          { id: 'p9', name: 'Долгор', years: '1946 – 2003', note: 'Увс', photoUrl: PHOTOS[5]!, initial: 'Д' },
+        ],
+      },
+    ],
+  },
+];

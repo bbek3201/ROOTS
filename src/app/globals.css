@@ -267,6 +267,112 @@ body {
 }
 
 /* ===========================================================================
+   The heritage surface — the family tree, and only the family tree
+   ---------------------------------------------------------------------------
+   Every other page in ROOTS is warm paper. This one is not, and the exception
+   is deliberate rather than a second theme creeping in: the tree is the only
+   screen you look INTO rather than read, and a dark ground is what lets seven
+   generations of small portraits sit in one field without the page glaring
+   between them. Photographs gain contrast, gold reads as gold instead of as
+   mustard, and the connecting lines stop competing with the paper's own
+   texture.
+
+   Scoped to `.heritage` for the same reason `.editorial` is scoped: these are
+   fixed, chosen colours, not a themeable palette. They must not follow the OS,
+   must not invert, and must not leak onto the pages either side of this one.
+   =========================================================================== */
+@layer components {
+  .heritage {
+    --hx-ground: #0c0d10;
+    --hx-raised: #14161b;
+    --hx-text: #f4f4f5;
+    --hx-muted: color-mix(in srgb, #f4f4f5 58%, transparent);
+    --hx-faint: color-mix(in srgb, #f4f4f5 34%, transparent);
+    --hx-gold: #d4af37;
+    --hx-heart: #ef4444;
+    --hx-hair: color-mix(in srgb, #f4f4f5 14%, transparent);
+
+    position: relative;
+    isolation: isolate;
+    color-scheme: dark;
+    background: var(--hx-ground);
+    color: var(--hx-text);
+  }
+
+  /* One slow pool of warmth from above, so the ground reads as a lit room
+     rather than as a black rectangle. */
+  .heritage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(58rem 34rem at 50% -8%, color-mix(in srgb, #d4af37 11%, transparent), transparent 66%),
+      radial-gradient(44rem 30rem at 88% 108%, color-mix(in srgb, #ef4444 7%, transparent), transparent 62%);
+  }
+
+  .hx-eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--hx-gold);
+  }
+
+  /* A card in the heritage field: raised a little, edged in the faintest gold,
+     and lit from within on hover. Never a hard border — a bright outline in a
+     dark field is a grid, and this is meant to read as a lineage. */
+  .hx-card {
+    background: linear-gradient(160deg, var(--hx-raised), color-mix(in srgb, var(--hx-ground) 82%, var(--hx-raised)));
+    border: 1px solid color-mix(in srgb, var(--hx-gold) 22%, transparent);
+    border-radius: 20px;
+    transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .hx-card:hover {
+    border-color: color-mix(in srgb, var(--hx-gold) 55%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--hx-gold) 12%, transparent),
+                0 18px 40px -24px rgb(0 0 0 / 0.9);
+    transform: translateY(-2px);
+  }
+
+  /* The vertical thread between generations. A gradient rather than a solid
+     rule so a line does not simply stop: descent fades in and out of the dark
+     the way the record itself does. */
+  .hx-thread {
+    width: 1px;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in srgb, var(--hx-gold) 45%, transparent) 30%,
+      color-mix(in srgb, var(--hx-gold) 45%, transparent) 70%,
+      transparent
+    );
+  }
+
+  .hx-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding-inline: 1.15rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--hx-gold) 34%, transparent);
+    color: var(--hx-text);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .hx-btn:hover {
+    background: color-mix(in srgb, var(--hx-gold) 12%, transparent);
+    border-color: var(--hx-gold);
+  }
+}
+
+/* ===========================================================================
    The editorial surface
    ---------------------------------------------------------------------------
    The family home is not a screen in an app — it is the cover of the album,

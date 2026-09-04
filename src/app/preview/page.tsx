@@ -1,7 +1,8 @@
 import Link from 'next/link';
 
 const SCREENS = [
-  { href: '/preview/us', label: 'Хосын нүүр', note: 'Editorial spread' },
+  { href: '/preview/us', label: 'Хосын нүүр', note: 'Sanctuary layout' },
+  { href: '/preview/tree', label: 'Өв мод', note: 'Cinematic dark' },
   { href: '/preview/us/memories', label: 'Дурсамж', note: '4:5 плитүүд, хайлт' },
   { href: '/preview/us/timeline', label: 'Он цаг', note: 'Hairline rail' },
   { href: '/preview/us/letters', label: 'Захидал', note: 'Битүүмжилсэн ба нээлттэй' },
