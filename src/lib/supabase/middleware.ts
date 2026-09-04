@@ -2,8 +2,14 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@/types/database';
 
-/** Routes reachable without a session. Everything else requires sign-in. */
-const PUBLIC_PATHS = ['/login', '/signup', '/auth', '/invite', '/setup'];
+/**
+ * Routes reachable without a session. Everything else requires sign-in.
+ *
+ * `/preview` renders the design against sample data and holds no real content
+ * at all; its own layout returns 404 in a production build, so it is public
+ * only on a developer's machine.
+ */
+const PUBLIC_PATHS = ['/login', '/signup', '/auth', '/invite', '/setup', '/preview'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));

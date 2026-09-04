@@ -166,6 +166,21 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
+/* The lit card: the one action a screen is actually asking for.
+   ui/Card has offered `tone="hero"` since it was written and this utility was
+   never defined, so every hero card rendered as unstyled text on the page
+   background — invisible on warm paper, which is exactly where it was used. */
+@utility card-hero {
+  background: linear-gradient(
+    155deg,
+    var(--color-forest-wash),
+    color-mix(in srgb, var(--color-sage-wash) 70%, var(--color-surface))
+  );
+  border: 1px solid color-mix(in srgb, var(--color-forest) 18%, transparent);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
 /* A quiet band rather than a card: a ground without an outline, which is what
    most sections need once photographs are doing the work. */
 @utility panel {

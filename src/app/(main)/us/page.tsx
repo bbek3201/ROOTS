@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { requireActiveFamily } from '@/lib/family-context';
 import { getMyCoupleSpace } from '@/lib/couple/space';
 import {
-  coupleCounts, listCoupleFirsts, listCoupleMemories, signCoupleMedia,
+  coupleCounts, listCoupleFirsts, listCoupleMemories, nextFutureUnlock, signCoupleMedia,
 } from '@/lib/data/couple-space';
 import { firstsProgress } from '@/lib/couple/firsts';
 import { CoupleHome } from '@/components/couple/CoupleHome';
@@ -26,10 +26,11 @@ export default async function CoupleSpacePage() {
   // No space yet: the first thing to do is make one, not look at an empty one.
   if (!mine) redirect('/us/start');
 
-  const [counts, memories, firsts] = await Promise.all([
+  const [counts, memories, firsts, nextUnlockAt] = await Promise.all([
     coupleCounts(mine.space.id),
     listCoupleMemories(mine.space.id),
     listCoupleFirsts(mine.space.id),
+    nextFutureUnlock(mine.space.id),
   ]);
 
   // The most recent photographs, which is what the space should open on. Five
@@ -51,6 +52,7 @@ export default async function CoupleSpacePage() {
       partnerJoined={mine.partnerJoined}
       counts={counts}
       firsts={firstsProgress(firsts)}
+      nextUnlockAt={nextUnlockAt}
       covers={covers.map((item) => ({
         id: item.id,
         src: urls.get(item.storage_path) ?? null,

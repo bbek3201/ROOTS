@@ -235,3 +235,26 @@ export async function signMediaByIds(
   }
   return byId;
 }
+
+/**
+ * When the next sealed message opens.
+ *
+ * Only the date, and only of the soonest one still locked — the couple home
+ * counts down to something they actually wrote rather than showing a
+ * placeholder. Reads no bodies at all, so a locked message stays locked even to
+ * this query.
+ */
+export async function nextFutureUnlock(spaceId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('couple_future_messages')
+    .select('unlock_at')
+    .eq('space_id', spaceId)
+    .is('deleted_at', null)
+    .gt('unlock_at', new Date().toISOString())
+    .order('unlock_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  return data?.unlock_at ?? null;
+}

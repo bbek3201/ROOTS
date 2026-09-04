@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/Field';
 import { PhotoAttachment } from '@/components/couple/PhotoAttachment';
+import { formatDate } from '@/lib/format';
 
 export interface FirstCard {
   key: string;
@@ -63,7 +64,9 @@ export function FirstsRoom({ spaceId, cards }: { spaceId: string; cards: FirstCa
                 <span className="flex items-baseline justify-between gap-4">
                   <span className="eyebrow">{card.label}</span>
                   {card.happenedOn ? (
-                    <span className="shrink-0 text-xs tabular-nums text-muted">{card.happenedOn}</span>
+                    <span className="shrink-0 text-xs text-muted">
+                      {formatDate(card.happenedOn, 'exact')}
+                    </span>
                   ) : null}
                 </span>
 

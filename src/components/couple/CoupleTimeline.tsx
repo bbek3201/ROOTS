@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { EmptyState } from '@/components/ui/States';
 import { HeartIcon, LetterIcon, MapPinIcon, MemoryIcon, MicIcon } from '@/components/icons';
+import { formatDayMonth } from '@/lib/format';
 import type { CoupleEntryKind, TimelineYear } from '@/lib/couple/timeline';
 
 /**
@@ -60,7 +61,21 @@ export function CoupleTimeline({ years }: { years: TimelineYear[] }) {
                     <Glyph size={14} />
                   </span>
 
+                  {/* The thumbnail hangs on the RIGHT so that every title
+                      starts on the same vertical line. With the picture on the
+                      left, entries that happen to have one are indented and
+                      the rail reads as two ragged columns instead of one
+                      thread. */}
                   <Link href={entry.href} className="group flex items-start gap-4">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[1.05rem] leading-snug text-ink group-hover:underline decoration-1 underline-offset-4">
+                        {entry.title}
+                      </span>
+                      <span className="mt-1 block text-xs tracking-[0.08em] text-muted uppercase">
+                        {[formatDayMonth(entry.date), entry.subtitle].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+
                     {entry.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
                       <img
@@ -70,14 +85,6 @@ export function CoupleTimeline({ years }: { years: TimelineYear[] }) {
                         className="h-16 w-14 shrink-0 rounded-lg border border-line object-cover"
                       />
                     ) : null}
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[1.05rem] leading-snug text-ink group-hover:underline decoration-1 underline-offset-4">
-                        {entry.title}
-                      </span>
-                      <span className="mt-1 block text-xs tracking-[0.08em] text-muted uppercase">
-                        {[entry.date, entry.subtitle].filter(Boolean).join(' · ')}
-                      </span>
-                    </span>
                   </Link>
                 </li>
               );

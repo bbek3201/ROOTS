@@ -32,6 +32,32 @@ export function initials(person: NameLike | null | undefined): string {
  * Dates in a family archive are frequently partial. Rendering "1961-01-01" for
  * "sometime in 1961" is a quiet lie, so precision decides the format.
  */
+/**
+ * Mongolian month names, written out rather than asked for.
+ *
+ * Chrome ships no Mongolian in its ICU data — `Intl.DateTimeFormat
+ * .supportedLocalesOf(['mn-MN', 'mn'])` returns an empty array — so every
+ * Intl call for 'mn-MN' in a browser silently resolves to en-US and renders
+ * "March 18, 2026". Node's ICU is complete, so the same date came out
+ * "2026 оны гуравдугаар сарын 18" on the server and in English the moment a
+ * client component rendered it. Two different dates for one row.
+ *
+ * A table is thirteen lines and cannot fall back to somebody else's language.
+ * ROOTS is Mongolian-first; its dates should not depend on a browser vendor
+ * deciding to include the locale.
+ */
+const MN_MONTHS = [
+  '1-р', '2-р', '3-р', '4-р', '5-р', '6-р',
+  '7-р', '8-р', '9-р', '10-р', '11-р', '12-р',
+] as const;
+
+/**
+ * Dates as a family writes them.
+ *
+ * Precision is carried rather than guessed: an archive is full of dates that
+ * are honestly "1978" or "the sixties", and rendering those as 1 January is a
+ * lie the interface tells on the family's behalf.
+ */
 export function formatDate(
   date: string | null | undefined,
   precision: DatePrecision = 'exact',
@@ -42,26 +68,74 @@ export function formatDate(
   if (Number.isNaN(parsed.getTime())) return date;
 
   const year = parsed.getUTCFullYear();
+  const isMn = locale === 'mn' || locale.startsWith('mn-');
 
   switch (precision) {
     case 'year':
-      return locale === 'mn' ? `${year} он` : String(year);
+      return isMn ? `${year} он` : String(year);
     case 'decade':
-      return locale === 'mn' ? `${Math.floor(year / 10) * 10}-аад он` : `${Math.floor(year / 10) * 10}s`;
+      return isMn ? `${Math.floor(year / 10) * 10}-аад он` : `${Math.floor(year / 10) * 10}s`;
     case 'about':
-      return locale === 'mn' ? `${year} оны орчим` : `about ${year}`;
+      return isMn ? `${year} оны орчим` : `about ${year}`;
     case 'month':
-      return new Intl.DateTimeFormat(locale === 'mn' ? 'mn-MN' : locale, {
+      if (isMn) return `${year} оны ${MN_MONTHS[parsed.getUTCMonth()]} сар`;
+      return new Intl.DateTimeFormat(locale, {
         year: 'numeric', month: 'long', timeZone: 'UTC',
       }).format(parsed);
     case 'unknown':
-      return locale === 'mn' ? `${year} он (тодорхойгүй)` : `${year} (uncertain)`;
+      return isMn ? `${year} он (тодорхойгүй)` : `${year} (uncertain)`;
     case 'exact':
     default:
-      return new Intl.DateTimeFormat(locale === 'mn' ? 'mn-MN' : locale, {
+      if (isMn) {
+        return `${year} оны ${MN_MONTHS[parsed.getUTCMonth()]} сарын ${parsed.getUTCDate()}`;
+      }
+      return new Intl.DateTimeFormat(locale, {
         year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
       }).format(parsed);
   }
+}
+
+/**
+ * Day and month, with the year left off.
+ *
+ * For a list that is already grouped under a year heading, repeating 2026 on
+ * every row is noise the eye has to step over on the way to the day.
+ */
+export function formatDayMonth(date: string | null | undefined, locale = 'mn'): string {
+  if (!date) return '';
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return date;
+
+  const isMn = locale === 'mn' || locale.startsWith('mn-');
+  if (isMn) return `${MN_MONTHS[parsed.getUTCMonth()]} сарын ${parsed.getUTCDate()}`;
+
+  return new Intl.DateTimeFormat(locale, {
+    month: 'long', day: 'numeric', timeZone: 'UTC',
+  }).format(parsed);
+}
+
+/**
+ * The same date, short enough for a caption under a photograph.
+ *
+ * A gallery tile has room for a date and a place; "2026 оны 3-р сарын 18 ·
+ * Токио, Япон" truncates to uselessness in that space, and a truncated date is
+ * worse than a coarse one.
+ */
+export function formatDateShort(
+  date: string | null | undefined,
+  locale = 'mn',
+): string {
+  if (!date) return '';
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return date;
+
+  const isMn = locale === 'mn' || locale.startsWith('mn-');
+  if (isMn) {
+    return `${parsed.getUTCFullYear()}.${String(parsed.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric', month: 'short', timeZone: 'UTC',
+  }).format(parsed);
 }
 
 export function yearOf(date: string | null | undefined): string {
@@ -91,21 +165,56 @@ export function ageAt(birthDate: string | null, referenceDate: string | null): n
   return age >= 0 ? age : null;
 }
 
-export function relativeTime(iso: string, locale = 'mn'): string {
+/**
+ * Mongolian unit names, already in the genitive.
+ *
+ * Stored whole rather than built by appending a suffix: Mongolian vowel
+ * harmony gives сар → сарын and минут → минутын, not сарийн and минутийн. A
+ * single concatenated ending would be wrong in half these rows, and wrong in a
+ * way only a Mongolian speaker would notice — which is everyone using this.
+ */
+const MN_UNITS: Record<string, string> = {
+  year: 'жилийн', month: 'сарын', week: 'долоо хоногийн',
+  day: 'хоногийн', hour: 'цагийн', minute: 'минутын',
+};
+
+const RELATIVE_THRESHOLDS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+  ['year', 31_536_000], ['month', 2_592_000], ['week', 604_800],
+  ['day', 86_400], ['hour', 3600], ['minute', 60],
+];
+
+/**
+ * "3 хоногийн өмнө".
+ *
+ * Written out for Mongolian rather than asked of Intl.RelativeTimeFormat,
+ * which — like Intl.DateTimeFormat — has no 'mn' in a browser's ICU and
+ * silently answers in English. See the note on MN_MONTHS.
+ */
+export function relativeTime(iso: string, locale = 'mn', now = Date.now()): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return '';
-  const seconds = Math.round((then - Date.now()) / 1000);
-  const formatter = new Intl.RelativeTimeFormat(locale === 'mn' ? 'mn' : locale, { numeric: 'auto' });
 
-  const thresholds: Array<[Intl.RelativeTimeFormatUnit, number]> = [
-    ['year', 31_536_000], ['month', 2_592_000], ['week', 604_800],
-    ['day', 86_400], ['hour', 3600], ['minute', 60],
-  ];
+  const seconds = Math.round((then - now) / 1000);
+  const isMn = locale === 'mn' || locale.startsWith('mn-');
 
-  for (const [unit, size] of thresholds) {
-    if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit);
+  if (!isMn) {
+    const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+    for (const [unit, size] of RELATIVE_THRESHOLDS) {
+      if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit);
+    }
+    return formatter.format(Math.round(seconds), 'second');
   }
-  return formatter.format(Math.round(seconds), 'second');
+
+  for (const [unit, size] of RELATIVE_THRESHOLDS) {
+    if (Math.abs(seconds) < size) continue;
+    const amount = Math.round(Math.abs(seconds) / size);
+    const name = MN_UNITS[unit] ?? '';
+    return seconds < 0 ? `${amount} ${name} өмнө` : `${amount} ${name} дараа`;
+  }
+
+  // Under a minute either way. Mongolian has a better word for this than
+  // "0 секундын өмнө", which is what a units table would produce.
+  return 'саяхан';
 }
 
 export function formatBytes(bytes: number | null | undefined): string {

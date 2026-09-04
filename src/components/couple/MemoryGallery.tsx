@@ -6,7 +6,7 @@ import { Plate } from '@/components/home/Plate';
 import { EmptyState } from '@/components/ui/States';
 import { SearchIcon } from '@/components/icons';
 import { searchEntries, yearsPresent, type SearchableEntry } from '@/lib/couple/search';
-import { formatDate } from '@/lib/format';
+import { formatDateShort } from '@/lib/format';
 
 export interface GalleryMemory {
   id: string;
@@ -150,7 +150,7 @@ export function MemoryGallery({ memories }: { memories: GalleryMemory[] }) {
                     {memory.title}
                   </p>
                   <p className="mt-1 truncate text-[0.8rem] tracking-[0.06em] text-muted">
-                    {[memory.date ? formatDate(memory.date, 'exact') : null, memory.place]
+                    {[memory.date ? formatDateShort(memory.date) : null, memory.place]
                       .filter(Boolean)
                       .join(' · ')}
                   </p>

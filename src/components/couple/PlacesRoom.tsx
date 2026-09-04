@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/Field';
 import { EmptyState } from '@/components/ui/States';
 import { MapPinIcon } from '@/components/icons';
+import { formatDate } from '@/lib/format';
 import { PhotoAttachment } from '@/components/couple/PhotoAttachment';
 
 export interface CouplePlace {
@@ -135,7 +136,7 @@ export function PlacesRoom({ spaceId, places }: { spaceId: string; places: Coupl
                 <span className="block text-[1.05rem] leading-snug text-ink">{place.name}</span>
                 {place.visitedOn ? (
                   <span className="mt-1 block text-xs tracking-[0.08em] text-muted uppercase">
-                    {place.visitedOn}
+                    {formatDate(place.visitedOn, 'exact')}
                   </span>
                 ) : null}
                 {place.notes ? (

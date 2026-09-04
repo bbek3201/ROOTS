@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { EmptyState } from '@/components/ui/States';
 import { LetterIcon, LockIcon } from '@/components/icons';
-import { relativeTime } from '@/lib/format';
+import { formatDate, relativeTime } from '@/lib/format';
 
 export interface LetterSummary {
   id: string;
@@ -70,7 +70,7 @@ export function LetterList({ letters }: { letters: LetterSummary[] }) {
                   {letter.mine ? 'Таны бичсэн' : 'Танд'}
                   {' · '}
                   {letter.sealed && letter.unlockAt
-                    ? `${letter.unlockAt.slice(0, 10)}-нд нээгдэнэ`
+                    ? `${formatDate(letter.unlockAt.slice(0, 10), 'exact')}-нд нээгдэнэ`
                     : relativeTime(letter.createdAt)}
                 </span>
               </span>
