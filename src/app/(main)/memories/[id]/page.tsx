@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { requireActiveFamily } from '@/lib/family-context';
 import { getMemory } from '@/lib/data/memories';
 import { getSignedUrls } from '@/lib/media/storage';
+import { getFamilyIndex } from '@/lib/data/family';
+import { getPhotoTags, taggablePeople } from '@/lib/data/photo-tags';
+import { can } from '@/lib/auth/session';
 import { Photo, PhotoOverlay } from '@/components/ui/Photo';
 import { Display, Eyebrow, SectionLead } from '@/components/ui/Editorial';
 import { Avatar } from '@/components/ui/Avatar';
@@ -35,6 +38,11 @@ export default async function MemoryPage({ params }: { params: Promise<{ id: str
   const urls = await getSignedUrls(media.map((item) => item.storage_path));
   const photos = media.filter((item) => item.kind === 'photo');
   const others = media.filter((item) => item.kind !== 'photo');
+
+  const [index, photoTags] = await Promise.all([
+    getFamilyIndex(membership.family_id),
+    getPhotoTags(photos.map((item) => item.id)),
+  ]);
 
   const [cover, ...restPhotos] = photos;
   const coverUrl = cover ? urls.get(cover.storage_path) : null;
@@ -151,7 +159,10 @@ export default async function MemoryPage({ params }: { params: Promise<{ id: str
                 caption: item.caption,
                 variant: item.variant,
                 takenAt: item.taken_at,
+                tags: photoTags.get(item.id) ?? [],
               }))}
+              people={taggablePeople(index)}
+              canTag={can(membership, 'contribute')}
             />
           </section>
         ) : null}

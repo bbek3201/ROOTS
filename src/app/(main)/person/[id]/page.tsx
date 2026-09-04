@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { requireActiveFamily } from '@/lib/family-context';
 import { getPersonProfile, getPersonPhotoWall } from '@/lib/data/people';
 import { getFamilyIndex } from '@/lib/data/family';
+import { getPhotoTags, taggablePeople } from '@/lib/data/photo-tags';
 import { getSignedUrls } from '@/lib/media/storage';
 import { describeRelationship } from '@/lib/kinship';
 import {
@@ -18,6 +19,7 @@ import { AppearanceSection } from '@/components/person/AppearanceSection';
 import { VoiceSection } from '@/components/person/VoiceSection';
 import { PhotoWall } from '@/components/media/PhotoWall';
 import { displayName, fullName, formatDate, lifespan } from '@/lib/format';
+import { can } from '@/lib/auth/session';
 import { ChevronLeftIcon, MapPinIcon } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +46,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     getFamilyIndex(membership.family_id),
     getPersonPhotoWall(id),
   ]);
+  const photoTags = await getPhotoTags(photoWall.map((media) => media.id));
 
   const { person } = profile;
   const locale = membership.family.default_locale;
@@ -245,7 +248,10 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                 caption: media.caption,
                 variant: media.variant,
                 takenAt: media.taken_at,
+                tags: photoTags.get(media.id) ?? [],
               }))}
+              people={taggablePeople(index)}
+              canTag={can(membership, 'contribute')}
             />
           )}
         </section>

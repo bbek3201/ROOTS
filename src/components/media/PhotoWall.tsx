@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/Badge';
+import { PhotoTagger, type TaggablePerson, type TaggedPerson } from '@/components/media/PhotoTagger';
 import { yearOf } from '@/lib/format';
 
 interface Photo {
@@ -10,6 +11,8 @@ interface Photo {
   caption: string | null;
   variant: string;
   takenAt: string | null;
+  /** Who is already named in this photograph. */
+  tags?: TaggedPerson[];
 }
 
 /**
@@ -18,8 +21,23 @@ interface Photo {
  * Derived versions (restored, colourised) are labelled in the viewer so nobody
  * mistakes an enhanced image for the original print. The original is always
  * still in the archive alongside it.
+ *
+ * Naming the people in a photograph happens here too, in front of the open
+ * image. A name filed here reaches that person's page on its own, which is the
+ * only reason a box of scanned prints ever becomes an archive rather than a
+ * folder. Pass no roster and the wall is exactly what it was: a grid and a
+ * viewer.
  */
-export function PhotoWall({ photos }: { photos: Photo[] }) {
+export function PhotoWall({
+  photos,
+  people = [],
+  canTag = false,
+}: {
+  photos: Photo[];
+  /** The relatives who can be named. Empty means no tagging UI at all. */
+  people?: TaggablePerson[];
+  canTag?: boolean;
+}) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -70,6 +88,11 @@ export function PhotoWall({ photos }: { photos: Photo[] }) {
                   Сэргээсэн
                 </span>
               ) : null}
+              {photo.tags && photo.tags.length > 0 ? (
+                <span className="absolute right-1 top-1 rounded-pill bg-ink/70 px-1.5 py-0.5 text-[0.6rem] text-white">
+                  {photo.tags.length}
+                </span>
+              ) : null}
             </button>
           </li>
         ))}
@@ -115,6 +138,16 @@ export function PhotoWall({ photos }: { photos: Photo[] }) {
                 <Badge tone="forest">Сэргээсэн хувилбар · эх хувь архивт хэвээр</Badge>
               )}
             </p>
+
+            <PhotoTagger
+              // Remount per photo so the next image never inherits the previous
+              // one's optimistic list or its open picker.
+              key={open.id}
+              mediaId={open.id}
+              initial={open.tags ?? []}
+              people={people}
+              canTag={canTag && people.length > 0}
+            />
           </div>
         </div>
       ) : null}

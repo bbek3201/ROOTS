@@ -4,6 +4,8 @@ import { requireActiveFamily } from '@/lib/family-context';
 import { getCoupleProfile } from '@/lib/data/couples';
 import { getCoupleTimeline } from '@/lib/data/timeline';
 import { getSignedUrls } from '@/lib/media/storage';
+import { getFamilyIndex } from '@/lib/data/family';
+import { getPhotoTags, taggablePeople } from '@/lib/data/photo-tags';
 import { can } from '@/lib/auth/session';
 import { AppHeader } from '@/components/nav/AppHeader';
 import { Avatar } from '@/components/ui/Avatar';
@@ -30,6 +32,10 @@ export default async function CouplePage({ params }: { params: Promise<{ id: str
   const locale = membership.family.default_locale;
 
   const photos = profile.media.filter((media) => media.kind === 'photo');
+  const [index, photoTags] = await Promise.all([
+    getFamilyIndex(membership.family_id),
+    getPhotoTags(photos.map((media) => media.id)),
+  ]);
   const photoUrls = await getSignedUrls(photos.map((media) => media.storage_path));
 
   const [partnerA, partnerB] = profile.partners;
@@ -138,7 +144,10 @@ export default async function CouplePage({ params }: { params: Promise<{ id: str
                 caption: media.caption,
                 variant: media.variant,
                 takenAt: media.taken_at,
+                tags: photoTags.get(media.id) ?? [],
               }))}
+              people={taggablePeople(index)}
+              canTag={can(membership, 'contribute')}
             />
           </section>
         ) : null}
