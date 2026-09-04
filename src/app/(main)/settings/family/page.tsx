@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/States';
 import { InviteManager } from '@/components/family/InviteManager';
 import { JoinCodeCard } from '@/components/family/JoinCodeCard';
+import { LanguageCard } from '@/components/family/LanguageCard';
 import { MemberList } from '@/components/family/MemberList';
 import { DangerZone } from '@/components/family/DangerZone';
 import { relativeTime } from '@/lib/format';
@@ -78,6 +79,17 @@ export default async function FamilySettingsPage() {
         </section>
 
         <section className="mb-6">
+          <SectionHeading
+            title="Архивын хэл"
+            subtitle="Ураг төрлийн нэршил, огноо, ярилцлагын хэл"
+          />
+          <LanguageCard
+            familyId={membership.family_id}
+            current={membership.family.default_locale}
+          />
+        </section>
+
+        <section className="mb-6">
           <SectionHeading title="Гишүүд" subtitle={`${members.data?.length ?? 0} хүн`} />
           <MemberList
             currentMemberId={membership.id}
@@ -138,6 +150,8 @@ function auditLabel(action: string): string {
     'family.created': 'Архив үүсгэсэн',
     'family.exported': 'Архивыг татсан',
     'family.deleted': 'Архивыг устгасан',
+    'family.locale_set': 'Архивын хэлийг сольсон',
+    'family.cover_set': 'Нүүр зураг тавьсан',
     'person.created': 'Хүн нэмсэн',
     'couple.created': 'Хос үүсгэсэн',
     'couple.child_linked': 'Хүүхэд холбосон',

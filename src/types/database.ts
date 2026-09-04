@@ -731,6 +731,7 @@ export type Database = {
       };
       /** Marks this visit and returns the PREVIOUS mark, which is what "new since" means. */
       touch_last_seen: { Args: { p_family_id: string }; Returns: string | null };
+      set_family_locale: { Args: { p_family_id: string; p_locale: string }; Returns: undefined };
       export_family: { Args: { p_family_id: string }; Returns: Json };
       delete_memory: { Args: { p_memory_id: string }; Returns: undefined };
       delete_family: { Args: { p_family_id: string; p_confirm_name: string }; Returns: undefined };
