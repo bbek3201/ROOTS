@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/Field';
+import { PhotoAttachment } from '@/components/couple/PhotoAttachment';
 import { nextAnniversary } from '@/lib/couple/timeline';
 
 /**
@@ -26,6 +27,7 @@ export function NewFutureMessageForm({
   startedOn: string | null;
 }) {
   const router = useRouter();
+  const [mediaId, setMediaId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [unlockOn, setUnlockOn] = useState('');
@@ -46,6 +48,7 @@ export function NewFutureMessageForm({
           title: title.trim(),
           body: body.trim(),
           unlockAt: new Date(`${unlockOn}T00:00:00`).toISOString(),
+          mediaId,
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -76,6 +79,7 @@ export function NewFutureMessageForm({
           placeholder="Тэр өдөр та хоёр юу мэдэрч байгаасай гэж хүсэж байна вэ?"
           required
         />
+        <PhotoAttachment spaceId={spaceId} onChange={setMediaId} label="Зураг хавсаргах" />
       </Card>
 
       <Card>

@@ -1,5 +1,5 @@
 import { requireMySpace } from '@/lib/couple/guard';
-import { listFutureMessages } from '@/lib/data/couple-space';
+import { listFutureMessages, signMediaByIds } from '@/lib/data/couple-space';
 import { AppHeader } from '@/components/nav/AppHeader';
 import { FutureRoom } from '@/components/couple/FutureRoom';
 
@@ -17,6 +17,12 @@ export default async function CoupleFuturePage() {
   const mine = await requireMySpace();
   const messages = await listFutureMessages(mine.space.id);
 
+  // Only unlocked messages resolve their attachment. A signed URL for a sealed
+  // message's photograph would be the message, minus the words.
+  const urls = await signMediaByIds(
+    messages.filter((message) => message.body !== null).map((message) => message.media_id),
+  );
+
   return (
     <>
       <AppHeader title="Ирээдүйд" backHref="/us" />
@@ -28,6 +34,7 @@ export default async function CoupleFuturePage() {
             unlockAt: message.unlock_at,
             body: message.body,
             openedAt: message.opened_at,
+            imageUrl: message.media_id ? urls.get(message.media_id) ?? null : null,
           }))}
         />
       </main>

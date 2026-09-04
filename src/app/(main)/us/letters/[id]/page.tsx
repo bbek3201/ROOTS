@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { requireMySpace } from '@/lib/couple/guard';
-import { getCoupleLetter } from '@/lib/data/couple-space';
+import { getCoupleLetter, signMediaByIds } from '@/lib/data/couple-space';
 import { AppHeader } from '@/components/nav/AppHeader';
 import { LetterReader } from '@/components/couple/LetterReader';
 
@@ -20,6 +20,10 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
   const letter = await getCoupleLetter(id);
   if (!letter || letter.space_id !== mine.space.id) notFound();
 
+  // The attachment follows the seal: a photograph is as much of the letter as
+  // its words, so it is only resolved once the body has come back.
+  const urls = letter.body !== null ? await signMediaByIds([letter.media_id]) : new Map();
+
   return (
     <>
       <AppHeader title={letter.title} backHref="/us/letters" />
@@ -31,6 +35,7 @@ export default async function LetterPage({ params }: { params: Promise<{ id: str
           unlockAt={letter.unlock_at}
           createdAt={letter.created_at}
           mine={letter.sender_id === mine.meUserId}
+          imageUrl={letter.media_id ? urls.get(letter.media_id) ?? null : null}
         />
       </main>
     </>

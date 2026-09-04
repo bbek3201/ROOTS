@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/Field';
+import { PhotoAttachment } from '@/components/couple/PhotoAttachment';
 
 export interface FirstCard {
   key: string;
@@ -12,6 +13,7 @@ export interface FirstCard {
   prompt: string;
   happenedOn: string | null;
   story: string | null;
+  imageUrl: string | null;
 }
 
 /**
@@ -40,8 +42,13 @@ export function FirstsRoom({ spaceId, cards }: { spaceId: string; cards: FirstCa
             <button
               type="button"
               onClick={() => setEditing(card.key)}
-              className="card block w-full p-4 text-left"
+              className="card block w-full overflow-hidden p-0 text-left"
             >
+              {card.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
+                <img src={card.imageUrl} alt="" loading="lazy" className="h-40 w-full object-cover" />
+              ) : null}
+              <span className="block p-4">
               <span className="flex items-baseline justify-between gap-3">
                 <span className="text-sm font-medium text-ink">{card.label}</span>
                 {card.happenedOn ? (
@@ -54,6 +61,7 @@ export function FirstsRoom({ spaceId, cards }: { spaceId: string; cards: FirstCa
                 }`}
               >
                 {card.story ?? card.prompt}
+              </span>
               </span>
             </button>
           )}
@@ -76,6 +84,7 @@ function FirstEditor({
 }) {
   const [happenedOn, setHappenedOn] = useState(card.happenedOn ?? '');
   const [story, setStory] = useState(card.story ?? '');
+  const [mediaId, setMediaId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +99,7 @@ function FirstEditor({
           key: card.key,
           happenedOn: happenedOn || null,
           story: story.trim() || undefined,
+          mediaId,
         }),
       });
       if (!response.ok) throw new Error('Хадгалахад алдаа гарлаа.');
@@ -116,6 +126,7 @@ function FirstEditor({
         onChange={(event) => setStory(event.target.value)}
         rows={5}
       />
+      <PhotoAttachment spaceId={spaceId} onChange={setMediaId} />
       {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
       <div className="flex gap-2">
         <Button variant="ghost" fullWidth onClick={onCancel}>Болих</Button>

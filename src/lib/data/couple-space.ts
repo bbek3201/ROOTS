@@ -204,3 +204,34 @@ export async function coupleCounts(spaceId: string): Promise<{
 export async function signCoupleMedia(media: readonly { storage_path: string }[]): Promise<Map<string, string>> {
   return getSignedUrls(media.map((item) => item.storage_path));
 }
+
+/**
+ * Signed URLs for a handful of attachments, addressed by id rather than path.
+ *
+ * Letters, places, firsts and future messages each carry at most one file, so
+ * they store a media_id rather than joining a whole row. This resolves a page's
+ * worth of those in one query and one signing round trip.
+ */
+export async function signMediaByIds(
+  ids: ReadonlyArray<string | null>,
+): Promise<Map<string, string>> {
+  const wanted = [...new Set(ids.filter((id): id is string => typeof id === 'string'))];
+  if (wanted.length === 0) return new Map();
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('couple_media')
+    .select('id, storage_path')
+    .in('id', wanted)
+    .is('deleted_at', null);
+
+  const rows = data ?? [];
+  const urls = await getSignedUrls(rows.map((row) => row.storage_path));
+
+  const byId = new Map<string, string>();
+  for (const row of rows) {
+    const url = urls.get(row.storage_path);
+    if (url) byId.set(row.id, url);
+  }
+  return byId;
+}

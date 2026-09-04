@@ -15,6 +15,7 @@ export interface FutureMessage {
   /** Null while sealed — the database returns no body, so there is none here. */
   body: string | null;
   openedAt: string | null;
+  imageUrl: string | null;
 }
 
 /**
@@ -137,6 +138,14 @@ function OpenedMessage({ message }: { message: FutureMessage }) {
     <Card>
       <p className="text-sm font-medium text-ink">{message.title}</p>
       <p className="mt-1 text-xs text-muted">{formatDate(message.unlockAt.slice(0, 10), 'exact')}</p>
+      {message.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
+        <img
+          src={message.imageUrl}
+          alt=""
+          className="mt-3 w-full rounded-xl border border-line object-cover"
+        />
+      ) : null}
       <p className="mt-3 whitespace-pre-wrap text-[1.05rem] leading-relaxed text-ink">{message.body}</p>
     </Card>
   );

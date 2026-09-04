@@ -1,5 +1,5 @@
 import { requireMySpace } from '@/lib/couple/guard';
-import { listCouplePlaces } from '@/lib/data/couple-space';
+import { listCouplePlaces, signMediaByIds } from '@/lib/data/couple-space';
 import { AppHeader } from '@/components/nav/AppHeader';
 import { PlacesRoom } from '@/components/couple/PlacesRoom';
 
@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 export default async function CouplePlacesPage() {
   const mine = await requireMySpace();
   const places = await listCouplePlaces(mine.space.id);
+  const urls = await signMediaByIds(places.map((place) => place.media_id));
 
   return (
     <>
@@ -26,6 +27,7 @@ export default async function CouplePlacesPage() {
             notes: place.notes,
             latitude: place.latitude,
             longitude: place.longitude,
+            imageUrl: place.media_id ? urls.get(place.media_id) ?? null : null,
           }))}
         />
       </main>

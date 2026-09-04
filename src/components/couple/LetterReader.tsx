@@ -19,6 +19,7 @@ export function LetterReader({
   unlockAt,
   createdAt,
   mine,
+  imageUrl,
 }: {
   id: string;
   title: string;
@@ -26,6 +27,7 @@ export function LetterReader({
   unlockAt: string | null;
   createdAt: string;
   mine: boolean;
+  imageUrl: string | null;
 }) {
   // Reading it marks it read, once, and only for the recipient — the RPC
   // ignores the writer re-reading their own letter.
@@ -54,6 +56,15 @@ export function LetterReader({
       <p className="eyebrow">{mine ? 'Таны бичсэн' : 'Танд'}</p>
       <h1 className="ed-display ed-display-lg mt-3 text-balance">{title}</h1>
       <p className="mt-2 text-sm text-muted">{formatDate(createdAt.slice(0, 10), 'exact')}</p>
+
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
+        <img
+          src={imageUrl}
+          alt=""
+          className="mt-6 w-full rounded-2xl border border-line object-cover"
+        />
+      ) : null}
 
       <div className="mt-7 whitespace-pre-wrap text-[1.1rem] leading-[1.85] text-ink">{body}</div>
     </article>

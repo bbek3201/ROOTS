@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/Field';
 import { EmptyState } from '@/components/ui/States';
 import { MapPinIcon } from '@/components/icons';
+import { PhotoAttachment } from '@/components/couple/PhotoAttachment';
 
 export interface CouplePlace {
   id: string;
@@ -15,6 +16,7 @@ export interface CouplePlace {
   notes: string | null;
   latitude: number | null;
   longitude: number | null;
+  imageUrl: string | null;
 }
 
 /**
@@ -33,6 +35,7 @@ export function PlacesRoom({ spaceId, places }: { spaceId: string; places: Coupl
   const [name, setName] = useState('');
   const [visitedOn, setVisitedOn] = useState('');
   const [notes, setNotes] = useState('');
+  const [mediaId, setMediaId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +51,7 @@ export function PlacesRoom({ spaceId, places }: { spaceId: string; places: Coupl
           name: name.trim(),
           visitedOn: visitedOn || null,
           notes: notes.trim() || undefined,
+          mediaId,
         }),
       });
       if (!response.ok) {
@@ -57,6 +61,7 @@ export function PlacesRoom({ spaceId, places }: { spaceId: string; places: Coupl
       setName('');
       setVisitedOn('');
       setNotes('');
+      setMediaId(null);
       setAdding(false);
       router.refresh();
     } catch (caught) {
@@ -89,6 +94,7 @@ export function PlacesRoom({ spaceId, places }: { spaceId: string; places: Coupl
             onChange={(event) => setNotes(event.target.value)}
             rows={4}
           />
+          <PhotoAttachment spaceId={spaceId} onChange={setMediaId} />
           <div className="flex gap-2">
             <Button variant="ghost" fullWidth onClick={() => setAdding(false)}>Болих</Button>
             <Button fullWidth onClick={() => void submit()} loading={saving} disabled={name.trim().length === 0}>
@@ -113,7 +119,17 @@ export function PlacesRoom({ spaceId, places }: { spaceId: string; places: Coupl
         <ul className="space-y-2">
           {places.map((place) => (
             <li key={place.id} className="card flex items-start gap-3 p-4">
-              <MapPinIcon size={18} className="mt-0.5 shrink-0 text-sage" />
+              {place.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
+                <img
+                  src={place.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  className="h-14 w-14 shrink-0 rounded-xl border border-line object-cover"
+                />
+              ) : (
+                <MapPinIcon size={18} className="mt-0.5 shrink-0 text-sage" />
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-ink">{place.name}</span>
                 {place.visitedOn ? (

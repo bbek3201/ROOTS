@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/Field';
+import { PhotoAttachment } from '@/components/couple/PhotoAttachment';
 
 /**
  * Writing a letter.
@@ -16,6 +17,7 @@ import { TextAreaField, TextField } from '@/components/ui/Field';
  */
 export function NewLetterForm({ spaceId, recipientName }: { spaceId: string; recipientName: string }) {
   const router = useRouter();
+  const [mediaId, setMediaId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [seal, setSeal] = useState(false);
@@ -37,6 +39,7 @@ export function NewLetterForm({ spaceId, recipientName }: { spaceId: string; rec
           // Local midnight of the chosen day, which is what a person means when
           // they pick a date to be surprised on.
           unlockAt: seal && unlockOn ? new Date(`${unlockOn}T00:00:00`).toISOString() : null,
+          mediaId,
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -67,6 +70,7 @@ export function NewLetterForm({ spaceId, recipientName }: { spaceId: string; rec
           rows={12}
           required
         />
+        <PhotoAttachment spaceId={spaceId} onChange={setMediaId} />
       </Card>
 
       <Card>

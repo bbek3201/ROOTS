@@ -1,5 +1,5 @@
 import { requireMySpace } from '@/lib/couple/guard';
-import { listCoupleFirsts } from '@/lib/data/couple-space';
+import { listCoupleFirsts, signMediaByIds } from '@/lib/data/couple-space';
 import { mergeFirsts } from '@/lib/couple/firsts';
 import { AppHeader } from '@/components/nav/AppHeader';
 import { FirstsRoom } from '@/components/couple/FirstsRoom';
@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 export default async function CoupleFirstsPage() {
   const mine = await requireMySpace();
   const saved = await listCoupleFirsts(mine.space.id);
+  const urls = await signMediaByIds(saved.map((first) => first.media_id));
 
   return (
     <>
@@ -29,6 +30,7 @@ export default async function CoupleFirstsPage() {
             prompt: card.prompt,
             happenedOn: card.entry?.happened_on ?? null,
             story: card.entry?.story ?? null,
+            imageUrl: card.entry?.media_id ? urls.get(card.entry.media_id) ?? null : null,
           }))}
         />
       </main>
