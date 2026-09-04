@@ -140,7 +140,7 @@ export function VoiceRoom({ spaceId, notes }: { spaceId: string; notes: VoiceNot
 
   return (
     <div className="space-y-5">
-      <Card className="text-center">
+      <Card className="px-5 py-9 text-center">
         {state === 'recorded' || state === 'saving' ? (
           <>
             <p className="text-sm text-muted">{formatDuration(elapsed)} бичигдлээ</p>
@@ -176,13 +176,21 @@ export function VoiceRoom({ spaceId, notes }: { spaceId: string; notes: VoiceNot
               type="button"
               onClick={() => (state === 'recording' ? stop() : void start())}
               aria-label={state === 'recording' ? 'Зогсоох' : 'Бичиж эхлэх'}
-              className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ${
-                state === 'recording' ? 'bg-heart text-white' : 'bg-forest text-forest-ink'
+              className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full transition-transform duration-200 active:scale-95 ${
+                state === 'recording'
+                  ? 'recording-pulse bg-heart text-white'
+                  : 'bg-forest text-forest-ink shadow-(--shadow-green)'
               }`}
             >
-              {state === 'recording' ? <span className="h-6 w-6 rounded-sm bg-white" /> : <MicIcon size={28} />}
+              {state === 'recording' ? <span className="h-7 w-7 rounded-sm bg-white" /> : <MicIcon size={30} />}
             </button>
-            <p className="mt-4 text-sm text-muted">
+            <p
+              className={
+                state === 'recording'
+                  ? 'ed-display mt-5 text-3xl tabular-nums'
+                  : 'mt-5 text-sm text-muted'
+              }
+            >
               {state === 'recording' ? formatDuration(elapsed) : 'Дуу хоолойгоороо дурсамж үлдээх'}
             </p>
           </>
@@ -193,14 +201,13 @@ export function VoiceRoom({ spaceId, notes }: { spaceId: string; notes: VoiceNot
 
       {notes.length === 0 ? (
         <EmptyState
-          icon="🎙️"
           title="Хоолойгоо үлдээгээрэй"
           description="Хэдэн жилийн дараа сонсоход зураг хийж чадахгүй зүйлийг дуу хоолой хийнэ."
         />
       ) : (
-        <ul className="space-y-2">
+        <ul className="border-t border-line">
           {notes.map((note) => (
-            <li key={note.id} className="card flex items-center gap-3 p-3.5">
+            <li key={note.id} className="flex items-center gap-4 border-b border-line py-4">
               <button
                 type="button"
                 onClick={() => toggle(note.id, note.url)}
@@ -211,8 +218,8 @@ export function VoiceRoom({ spaceId, notes }: { spaceId: string; notes: VoiceNot
                 {playingId === note.id ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
               </button>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-ink">{note.title}</span>
-                <span className="block text-xs text-muted">
+                <span className="block truncate text-[1.05rem] leading-snug text-ink">{note.title}</span>
+                <span className="mt-1 block text-xs tracking-[0.08em] text-muted uppercase">
                   {[
                     note.recordedOn,
                     note.durationSeconds ? formatDuration(note.durationSeconds) : null,

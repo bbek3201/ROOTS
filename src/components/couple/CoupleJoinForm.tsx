@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { HeartIcon } from '@/components/icons';
 
 /** Accepting takes one tap; it also tells you what you are accepting. */
 export function CoupleJoinForm({ token, inviterName }: { token: string; inviterName: string }) {
@@ -31,15 +32,15 @@ export function CoupleJoinForm({ token, inviterName }: { token: string; inviterN
   };
 
   return (
-    <Card className="text-center">
-      <p className="text-3xl">❤️</p>
-      <h2 className="mt-3 font-display text-xl text-ink">
+    <Card className="px-5 py-10 text-center">
+      <HeartIcon size={28} className="mx-auto text-heart" />
+      <h2 className="ed-display ed-display-md mx-auto mt-6 max-w-[20ch] text-balance">
         {inviterName} таныг хамтдаа түүхээ бичихийг урьж байна
       </h2>
-      <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
+      <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-muted">
         Нэгдсэнээр та хоёрын хувийн орон зай нээгдэнэ. Гэр бүлийн бусад гишүүд эндэхийг харахгүй.
       </p>
-      <Button size="lg" className="mt-6" onClick={() => void accept()} loading={busy}>
+      <Button size="lg" className="mt-8" onClick={() => void accept()} loading={busy}>
         Нэгдэх
       </Button>
       {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}

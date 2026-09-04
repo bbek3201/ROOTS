@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/States';
+import { LockIcon, UnlockIcon } from '@/components/icons';
 import { formatDate } from '@/lib/format';
 
 export interface FutureMessage {
@@ -39,7 +40,6 @@ export function FutureRoom({ messages }: { messages: FutureMessage[] }) {
       <div className="space-y-4">
         <NewLink />
         <EmptyState
-          icon="🔐"
           title="Ирээдүйн өөрсдөдөө зүйл үлдээгээрэй."
           description="Тавьсан өдөр хүртэл хоёулаа хардаггүй. Тэр өдөр хүрэхэд л нээгдэнэ."
         />
@@ -75,13 +75,25 @@ export function FutureRoom({ messages }: { messages: FutureMessage[] }) {
               );
               return (
                 <li key={message.id}>
-                  <Card className="flex items-center gap-3">
-                    <span className="text-xl">🔒</span>
+                  {/* Dashed, muted, and led by the countdown rather than by the
+                      title: what a sealed message has to say right now is how
+                      long is left, and the waiting IS the feature. */}
+                  <Card className="flex items-center gap-4 border-dashed py-5">
+                    <LockIcon size={20} className="shrink-0 text-muted" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-ink">{message.title}</span>
-                      <span className="block text-xs text-muted">
-                        {formatDate(message.unlockAt.slice(0, 10), 'exact')} ·{' '}
-                        {days === 0 ? 'өнөөдөр' : `${days} хоногийн дараа`}
+                      <span className="block truncate text-[1.02rem] leading-snug text-ink-soft">
+                        {message.title}
+                      </span>
+                      <span className="mt-1 block text-xs tracking-[0.08em] text-muted uppercase">
+                        {formatDate(message.unlockAt.slice(0, 10), 'exact')}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="ed-display block text-2xl tabular-nums text-[color-mix(in_srgb,#183b32_45%,transparent)]">
+                        {days}
+                      </span>
+                      <span className="block text-[0.65rem] tracking-[0.14em] text-muted uppercase">
+                        {days === 0 ? 'өнөөдөр' : 'хоног'}
                       </span>
                     </span>
                   </Card>
@@ -99,7 +111,7 @@ function NewLink() {
   return (
     <Link
       href="/us/future/new"
-      className="flex min-h-12 w-full items-center justify-center rounded-xl bg-forest text-sm font-medium text-forest-ink"
+      className="flex min-h-12 w-full items-center justify-center rounded-pill bg-forest text-sm font-medium text-forest-ink"
     >
       Ирээдүйд захиа үлдээх
     </Link>
@@ -126,10 +138,14 @@ function OpenedMessage({ message }: { message: FutureMessage }) {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => void reveal()} className="card-hero block w-full p-5 text-left">
-        <span className="block text-2xl">🔓</span>
-        <span className="mt-2 block font-display text-lg text-ink">Танай захиа бэлэн боллоо.</span>
-        <span className="mt-1 block text-sm text-muted">{message.title}</span>
+      <button
+        type="button"
+        onClick={() => void reveal()}
+        className="card-hero block w-full px-6 py-9 text-center"
+      >
+        <UnlockIcon size={26} className="mx-auto text-forest" />
+        <span className="ed-display mt-5 block text-2xl">Танай захиа бэлэн боллоо.</span>
+        <span className="mt-2 block text-sm text-muted">{message.title}</span>
       </button>
     );
   }

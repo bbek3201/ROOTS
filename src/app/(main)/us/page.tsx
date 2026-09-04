@@ -32,10 +32,12 @@ export default async function CoupleSpacePage() {
     listCoupleFirsts(mine.space.id),
   ]);
 
-  // The most recent photographs, which is what the space should open on.
+  // The most recent photographs, which is what the space should open on. Five
+  // exactly: one lead plate and a four-square beside it. Signing a sixth would
+  // be a round trip for an image the layout never renders.
   const covers = memories
     .flatMap((memory) => memory.media.filter((item) => item.kind === 'photo').slice(0, 1))
-    .slice(0, 6);
+    .slice(0, 5);
   const urls = await signCoupleMedia(covers);
 
   const [a, b] = mine.partners;

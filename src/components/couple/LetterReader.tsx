@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/Card';
+import { LockIcon } from '@/components/icons';
 import { formatDate } from '@/lib/format';
 
 /**
@@ -39,10 +40,10 @@ export function LetterReader({
 
   if (body === null) {
     return (
-      <Card className="py-12 text-center">
-        <p className="text-4xl">🔒</p>
-        <h1 className="mt-4 font-display text-xl text-ink">{title}</h1>
-        <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted">
+      <Card className="border-dashed py-16 text-center">
+        <LockIcon size={30} className="mx-auto text-muted" />
+        <h1 className="ed-display mt-6 text-2xl">{title}</h1>
+        <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-muted">
           {unlockAt
             ? `Энэ захидал ${formatDate(unlockAt.slice(0, 10), 'exact')}-нд нээгдэнэ.`
             : 'Энэ захидал одоохондоо битүүмжлэгдсэн байна.'}
@@ -54,8 +55,8 @@ export function LetterReader({
   return (
     <article>
       <p className="eyebrow">{mine ? 'Таны бичсэн' : 'Танд'}</p>
-      <h1 className="ed-display ed-display-lg mt-3 text-balance">{title}</h1>
-      <p className="mt-2 text-sm text-muted">{formatDate(createdAt.slice(0, 10), 'exact')}</p>
+      <h1 className="ed-display ed-display-lg mt-4 text-balance">{title}</h1>
+      <p className="mt-3 text-sm text-muted">{formatDate(createdAt.slice(0, 10), 'exact')}</p>
 
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
@@ -66,7 +67,11 @@ export function LetterReader({
         />
       ) : null}
 
-      <div className="mt-7 whitespace-pre-wrap text-[1.1rem] leading-[1.85] text-ink">{body}</div>
+      {/* A letter is read, not scanned. The measure is the point: 62 characters
+          is where a line stops needing the eye to hunt for the next one. */}
+      <div className="measure mt-9 whitespace-pre-wrap text-[1.12rem] leading-[1.9] text-ink">
+        {body}
+      </div>
     </article>
   );
 }

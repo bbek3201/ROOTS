@@ -84,6 +84,32 @@ export const HeartIcon = (props: IconProps) => (
   </Icon>
 );
 
+/** A sealed letter. Drawn closed on purpose — an open envelope reads as "sent". */
+export const LetterIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="3" y="5.5" width="18" height="13" rx="2" />
+    <path d="M3.6 7 12 13l8.4-6" />
+  </Icon>
+);
+
+/** A closed padlock: the shackle is drawn down, which is what "not yet" looks like. */
+export const LockIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="4.5" y="10.5" width="15" height="9.5" rx="2" />
+    <path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.6 0v2.7" />
+    <path d="M12 14.4v2" />
+  </Icon>
+);
+
+/** The same lock, open. Only ever shown once the date has actually arrived. */
+export const UnlockIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="4.5" y="10.5" width="15" height="9.5" rx="2" />
+    <path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.3-1.3" />
+    <path d="M12 14.4v2" />
+  </Icon>
+);
+
 export const ClockIcon = (props: IconProps) => (
   <Icon {...props}>
     <circle cx="12" cy="12" r="8.5" />

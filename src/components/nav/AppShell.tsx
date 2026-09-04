@@ -14,8 +14,8 @@ import { SiteHeader } from '@/components/home/SiteHeader';
  *
  * Three kinds of page live here, and the shell gives each the width it needs:
  *
- *   · The family home and the timeline are editorial pages. They run the full
- *     measure and lay themselves out edge to edge.
+ *   · The family home, the timeline and the couple space are editorial pages.
+ *     They run the full measure and lay themselves out edge to edge.
  *   · The family tree opens on the family's cover photograph and carries its
  *     canvas framed inside the page. The canvas is not full-bleed on purpose:
  *     a pan-and-zoom surface filling the viewport eats the page's scroll,
@@ -26,7 +26,7 @@ import { SiteHeader } from '@/components/home/SiteHeader';
  */
 
 /** Pages that compose their own full-width editorial layout. */
-const EDITORIAL = ['/family', '/timeline', '/family/tree', '/family/story'];
+const EDITORIAL = ['/family', '/timeline', '/family/tree', '/family/story', '/us'];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

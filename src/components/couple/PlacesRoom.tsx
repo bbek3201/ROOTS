@@ -111,32 +111,35 @@ export function PlacesRoom({ spaceId, places }: { spaceId: string; places: Coupl
 
       {places.length === 0 ? (
         <EmptyState
-          icon="🗺️"
           title="Хамт очсон газраа тэмдэглээрэй"
           description="Анхны болзооны газраас эхлээд аялсан хот бүр хүртэл."
         />
       ) : (
-        <ul className="space-y-2">
+        <ul className="border-t border-line">
           {places.map((place) => (
-            <li key={place.id} className="card flex items-start gap-3 p-4">
+            <li key={place.id} className="flex items-start gap-4 border-b border-line py-5">
               {place.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
                 <img
                   src={place.imageUrl}
                   alt=""
                   loading="lazy"
-                  className="h-14 w-14 shrink-0 rounded-xl border border-line object-cover"
+                  className="h-16 w-14 shrink-0 rounded-lg border border-line object-cover"
                 />
               ) : (
-                <MapPinIcon size={18} className="mt-0.5 shrink-0 text-sage" />
+                <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sage ring-1 ring-line">
+                  <MapPinIcon size={14} />
+                </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-ink">{place.name}</span>
+                <span className="block text-[1.05rem] leading-snug text-ink">{place.name}</span>
                 {place.visitedOn ? (
-                  <span className="block text-xs text-muted">{place.visitedOn}</span>
+                  <span className="mt-1 block text-xs tracking-[0.08em] text-muted uppercase">
+                    {place.visitedOn}
+                  </span>
                 ) : null}
                 {place.notes ? (
-                  <span className="mt-1.5 block whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">
+                  <span className="mt-2.5 block whitespace-pre-wrap text-[0.95rem] leading-relaxed text-ink-soft">
                     {place.notes}
                   </span>
                 ) : null}

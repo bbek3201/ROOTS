@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/Field';
 import { PhotoAttachment } from '@/components/couple/PhotoAttachment';
+import { LockIcon } from '@/components/icons';
 import { nextAnniversary } from '@/lib/couple/timeline';
 
 /**
@@ -128,8 +129,9 @@ export function NewFutureMessageForm({
         onClick={() => void submit()}
         loading={saving}
         disabled={title.trim().length === 0 || body.trim().length === 0 || !unlockOn}
+        icon={<LockIcon size={18} />}
       >
-        Битүүмжлэх 🔐
+        Битүүмжлэх
       </Button>
     </div>
   );

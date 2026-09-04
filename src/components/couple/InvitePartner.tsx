@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { HeartIcon } from '@/components/icons';
 
 /**
  * "Waiting for your person."
@@ -45,10 +46,12 @@ export function InvitePartner({ spaceId, partnerName }: { spaceId: string; partn
   };
 
   return (
-    <Card className="text-center">
-      <p className="text-2xl">🤍</p>
-      <h2 className="mt-2 font-display text-lg text-ink">Ханиа хүлээж байна…</h2>
-      <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted">
+    <Card className="border-dashed px-5 py-9 text-center">
+      {/* Outline, not filled: the second half of this pair has not arrived yet,
+          and the card says so before a single word is read. */}
+      <HeartIcon size={26} className="mx-auto text-muted" />
+      <h2 className="ed-display mt-5 text-2xl">Ханиа хүлээж байна…</h2>
+      <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted">
         {partnerName} нэгдэх хүртэл энэ орон зайг зөвхөн та харна. Доорх холбоосыг түүнд илгээнэ үү.
       </p>
 
@@ -57,7 +60,7 @@ export function InvitePartner({ spaceId, partnerName }: { spaceId: string; partn
           <p className="break-all rounded-xl bg-parchment-deep px-3 py-2.5 text-left text-xs text-ink-soft">
             {link}
           </p>
-          <Button variant="secondary" size="sm" className="mt-3" onClick={() => void copy()}>
+          <Button variant="secondary" size="sm" className="mt-3.5" onClick={() => void copy()}>
             {copied ? 'Хуулагдлаа ✓' : 'Холбоосыг хуулах'}
           </Button>
           <p className="mt-2 text-xs text-muted">
@@ -65,7 +68,7 @@ export function InvitePartner({ spaceId, partnerName }: { spaceId: string; partn
           </p>
         </div>
       ) : (
-        <Button className="mt-5" onClick={() => void invite()} loading={busy}>
+        <Button className="mt-7" onClick={() => void invite()} loading={busy}>
           Урилга үүсгэх
         </Button>
       )}

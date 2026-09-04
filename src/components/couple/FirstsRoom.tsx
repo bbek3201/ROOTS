@@ -28,7 +28,7 @@ export function FirstsRoom({ spaceId, cards }: { spaceId: string; cards: FirstCa
   const [editing, setEditing] = useState<string | null>(null);
 
   return (
-    <ul className="space-y-2.5">
+    <ul className="space-y-3.5">
       {cards.map((card) => (
         <li key={card.key}>
           {editing === card.key ? (
@@ -42,26 +42,42 @@ export function FirstsRoom({ spaceId, cards }: { spaceId: string; cards: FirstCa
             <button
               type="button"
               onClick={() => setEditing(card.key)}
-              className="card block w-full overflow-hidden p-0 text-left"
+              // An unwritten first is drawn in outline — dashed, no ground —
+              // so the page reads at a glance as what is filled and what is
+              // still being asked, without a single word of instruction.
+              className={`block w-full overflow-hidden text-left ${
+                card.story || card.happenedOn ? 'card p-0' : 'rounded-(--radius-card) border border-dashed border-line p-0'
+              }`}
             >
               {card.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
-                <img src={card.imageUrl} alt="" loading="lazy" className="h-40 w-full object-cover" />
+                <img
+                  src={card.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  className="aspect-video w-full object-cover"
+                />
               ) : null}
-              <span className="block p-4">
-              <span className="flex items-baseline justify-between gap-3">
-                <span className="text-sm font-medium text-ink">{card.label}</span>
-                {card.happenedOn ? (
-                  <span className="shrink-0 text-xs text-muted">{card.happenedOn}</span>
-                ) : null}
-              </span>
-              <span
-                className={`mt-1.5 block text-sm leading-relaxed ${
-                  card.story ? 'whitespace-pre-wrap text-ink-soft' : 'text-muted'
-                }`}
-              >
-                {card.story ?? card.prompt}
-              </span>
+
+              <span className="block px-5 py-5">
+                <span className="flex items-baseline justify-between gap-4">
+                  <span className="eyebrow">{card.label}</span>
+                  {card.happenedOn ? (
+                    <span className="shrink-0 text-xs tabular-nums text-muted">{card.happenedOn}</span>
+                  ) : null}
+                </span>
+
+                {card.story ? (
+                  <span className="mt-3 block whitespace-pre-wrap text-[1.02rem] leading-relaxed text-ink">
+                    {card.story}
+                  </span>
+                ) : (
+                  // The prompt is a question, set as one. A greyed-out label
+                  // would read as a disabled field; a question invites an answer.
+                  <span className="mt-3 block text-[1.02rem] leading-relaxed text-muted">
+                    {card.prompt}
+                  </span>
+                )}
               </span>
             </button>
           )}

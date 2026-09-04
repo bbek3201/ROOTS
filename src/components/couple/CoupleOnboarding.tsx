@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/Field';
 import { EmptyState } from '@/components/ui/States';
 import { AppHeader } from '@/components/nav/AppHeader';
+import { HeartIcon } from '@/components/icons';
 
 export interface OnboardingCouple {
   id: string;
@@ -115,7 +116,10 @@ export function CoupleOnboarding({ couples }: { couples: OnboardingCouple[] }) {
                       : 'border-line bg-surface'
                   }`}
                 >
-                  <span className="text-lg">❤️</span>
+                  <HeartIcon
+                    size={18}
+                    className={coupleId === couple.id ? 'shrink-0 text-heart' : 'shrink-0 text-muted'}
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-ink">{couple.partnerName}</span>
                     {couple.partnerYears ? (
@@ -162,7 +166,7 @@ export function CoupleOnboarding({ couples }: { couples: OnboardingCouple[] }) {
         ) : null}
 
         <Button size="lg" fullWidth onClick={() => void create()} loading={busy} disabled={!coupleId}>
-          Орон зайгаа нээх ❤
+          Орон зайгаа нээх
         </Button>
       </main>
     </>
