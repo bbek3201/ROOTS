@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { buildFamilyIndex } from '@/lib/relationships/graph';
 import { computeGenerations } from '@/lib/relationships/generation';
 import { buildTestFamily, P, personId } from '@/lib/relationships/__tests__/fixture';
-import { layoutFamilyTree, NODE_HEIGHT, ROW_HEIGHT } from '../layout';
+import {
+  COUPLE_HEIGHT,
+  layoutFamilyTree,
+  NODE_HEIGHT,
+  PERSON_HEIGHT,
+  PERSON_WIDTH,
+  ROW_HEIGHT,
+} from '../layout';
 
 /** The graph arrives from the database with generations already computed. */
 function indexWithGenerations() {
@@ -108,5 +115,44 @@ describe('tree layout', () => {
     for (const [personIdValue, position] of layout.personPositions) {
       expect(again.personPositions.get(personIdValue)).toEqual(position);
     }
+  });
+});
+
+describe('couple-first geometry', () => {
+  it('draws a unit with a partner as a couple, and one without as a person', () => {
+    const batUnit = layout.unitsById.get(layout.unitByPerson.get(personId(P.bat)) as string);
+    expect(batUnit?.kind).toBe('couple');
+    expect(batUnit?.width).toBeGreaterThan(PERSON_WIDTH);
+    expect(batUnit?.height).toBe(COUPLE_HEIGHT);
+
+    // Someone with no recorded partner keeps the smaller, quieter card.
+    const single = layout.units.find((unit) => unit.partners.length === 0);
+    expect(single?.kind).toBe('person');
+    expect(single?.width).toBe(PERSON_WIDTH);
+    expect(single?.height).toBe(PERSON_HEIGHT);
+  });
+
+  it('places every portrait inside the width of its own card', () => {
+    for (const unit of layout.units) {
+      const members = [unit.anchorId, ...unit.partners.map((partner) => partner.personId)];
+      for (const memberId of members) {
+        const position = layout.personPositions.get(memberId);
+        expect(position?.x).toBeGreaterThanOrEqual(unit.x);
+        expect(position?.x).toBeLessThan(unit.x + unit.width);
+      }
+    }
+  });
+
+  it('folds a collapsed branch away without disturbing the rest of the tree', () => {
+    // What a collapsed card hides is everyone BELOW it, not the card itself.
+    const hidden = new Set([personId(P.temuujin)]);
+    const collapsed = layoutFamilyTree(index, { hiddenPersonIds: hidden });
+
+    expect(collapsed.personPositions.has(personId(P.temuujin))).toBe(false);
+    expect(collapsed.personPositions.size).toBe(layout.personPositions.size - 1);
+    // Everything above the fold is still drawn, and still in its own row.
+    expect(collapsed.personPositions.get(personId(P.temuulen))?.y)
+      .toBe(layout.personPositions.get(personId(P.temuulen))?.y);
+    expect(collapsed.units.some((unit) => unit.anchorId === personId(P.temuujin))).toBe(false);
   });
 });

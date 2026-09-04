@@ -35,10 +35,10 @@ export function AuthShell({
         <TreeArtwork />
 
         <div className="relative mx-auto max-w-lg">
-          <p className="flex items-center gap-2 font-display text-sm tracking-[0.32em]">
+          <Link href="/" className="flex items-center gap-2 font-display text-sm tracking-[0.32em]">
             <LeafMark />
             ROOTS
-          </p>
+          </Link>
           <h1 className="mt-5 max-w-[15ch] text-balance font-display text-[2rem] leading-[1.15]">
             {title}
           </h1>

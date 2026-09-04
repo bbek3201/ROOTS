@@ -22,17 +22,47 @@ import type { CoupleNode, PersonNode } from '@/lib/relationships/types';
  * coordinates, which makes the layout unit-testable and the rendering dumb.
  */
 
-export const NODE_WIDTH = 88;
-export const NODE_HEIGHT = 104;
-export const PARTNER_GAP = 14;
-export const UNIT_GAP = 26;
-export const ROW_HEIGHT = 208;
+/**
+ * Card geometry.
+ *
+ * A couple is the primary object in this product, so it is drawn larger than a
+ * person and given room for two photographs side by side. A person who has not
+ * (yet) formed a couple is a narrower, quieter card — and the day they marry,
+ * their node becomes a couple card in the same place. That size difference is
+ * the whole visual grammar of the tree: big photographic plates are families,
+ * small ones are individuals.
+ */
+export const PERSON_WIDTH = 176;
+export const PERSON_HEIGHT = 232;
+export const COUPLE_WIDTH = 308;
+export const COUPLE_HEIGHT = 300;
+/** A remarriage adds a third portrait to the same card rather than a new one. */
+export const EXTRA_PARTNER_WIDTH = 132;
+export const UNIT_GAP = 48;
+export const ROW_HEIGHT = 404;
+
+/** Kept for callers that only need "a node's footprint" — a person-sized one. */
+export const NODE_WIDTH = PERSON_WIDTH;
+export const NODE_HEIGHT = PERSON_HEIGHT;
+/** Gap between two portraits inside one couple card. */
+export const PARTNER_GAP = 4;
+
+export function unitWidth(partnerCount: number): number {
+  if (partnerCount === 0) return PERSON_WIDTH;
+  return COUPLE_WIDTH + (partnerCount - 1) * EXTRA_PARTNER_WIDTH;
+}
+
+export function unitHeight(partnerCount: number): number {
+  return partnerCount === 0 ? PERSON_HEIGHT : COUPLE_HEIGHT;
+}
 
 export interface TreeUnit {
   id: string;
   anchorId: string;
   /** Partners drawn inside this unit, in marriage order. */
   partners: Array<{ coupleId: string; personId: string }>;
+  /** A unit with a partner is a family; one without is still an individual. */
+  kind: 'couple' | 'person';
   generation: number;
   /** Units for the children of this unit's couples. */
   childUnitIds: string[];
@@ -40,6 +70,7 @@ export interface TreeUnit {
   x: number;
   y: number;
   width: number;
+  height: number;
 }
 
 export interface TreeLayout {
@@ -57,10 +88,16 @@ interface Options {
   /** Only lay out these generations; the rest stay in the archive. */
   fromGeneration?: number;
   toGeneration?: number;
+  /**
+   * People inside a collapsed branch. They stay in the graph — the card they
+   * hang from says how many are folded away — but they take up no space.
+   */
+  hiddenPersonIds?: ReadonlySet<string>;
 }
 
 export function layoutFamilyTree(index: FamilyIndex, options: Options = {}): TreeLayout {
   const inWindow = (person: PersonNode): boolean => {
+    if (options.hiddenPersonIds?.has(person.id)) return false;
     const generation = person.generation ?? 1;
     if (options.fromGeneration !== undefined && generation < options.fromGeneration) return false;
     if (options.toGeneration !== undefined && generation > options.toGeneration) return false;
@@ -113,12 +150,14 @@ export function layoutFamilyTree(index: FamilyIndex, options: Options = {}): Tre
       id: unitId,
       anchorId: person.id,
       partners: [],
+      kind: 'person',
       generation: person.generation ?? 1,
       childUnitIds: [],
       parentUnitId: null,
       x: 0,
       y: 0,
-      width: NODE_WIDTH,
+      width: PERSON_WIDTH,
+      height: PERSON_HEIGHT,
     });
     unitByPerson.set(person.id, unitId);
   }
@@ -139,8 +178,12 @@ export function layoutFamilyTree(index: FamilyIndex, options: Options = {}): Tre
     unitByPerson.set(guestId, unit.id);
   }
 
+  // A unit's footprint is decided by what it turned out to be: the moment a
+  // person gains a partner they stop being a portrait and become a family.
   for (const unit of unitsById.values()) {
-    unit.width = NODE_WIDTH + unit.partners.length * (NODE_WIDTH + PARTNER_GAP);
+    unit.kind = unit.partners.length > 0 ? 'couple' : 'person';
+    unit.width = unitWidth(unit.partners.length);
+    unit.height = unitHeight(unit.partners.length);
   }
 
   // --- link children to their parents' units -------------------------------
@@ -245,12 +288,16 @@ export function layoutFamilyTree(index: FamilyIndex, options: Options = {}): Tre
   }
 
   // --- per-person coordinates, for selection and highlighting ---------------
+  // A card divides its width evenly between the portraits inside it, so these
+  // are the coordinates of a face rather than of a box: centring on a person
+  // puts THEM in the middle of the screen, not the family they married into.
   const personPositions = new Map<string, { x: number; y: number; unitId: string }>();
   for (const unit of unitsById.values()) {
+    const slot = unit.width / (unit.partners.length + 1);
     personPositions.set(unit.anchorId, { x: unit.x, y: unit.y, unitId: unit.id });
     unit.partners.forEach((partner, position) => {
       personPositions.set(partner.personId, {
-        x: unit.x + (position + 1) * (NODE_WIDTH + PARTNER_GAP),
+        x: unit.x + (position + 1) * slot,
         y: unit.y,
         unitId: unit.id,
       });
@@ -263,9 +310,13 @@ export function layoutFamilyTree(index: FamilyIndex, options: Options = {}): Tre
   const ys = units.map((unit) => unit.y);
 
   const minX = xs.length ? Math.min(...xs) : 0;
-  const maxX = rights.length ? Math.max(...rights) : NODE_WIDTH;
+  const maxX = rights.length ? Math.max(...rights) : PERSON_WIDTH;
   const minY = ys.length ? Math.min(...ys) : 0;
-  const maxY = ys.length ? Math.max(...ys) + NODE_HEIGHT : NODE_HEIGHT;
+  // Cards on the same row differ in height, so the bottom of the canvas is the
+  // lowest card edge rather than the last row plus a nominal node height.
+  const maxY = units.length
+    ? Math.max(...units.map((unit) => unit.y + unit.height))
+    : PERSON_HEIGHT;
 
   return {
     units,

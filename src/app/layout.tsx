@@ -1,24 +1,17 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Playfair_Display } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 
 /**
- * Two faces, self-hosted by next/font at build time.
+ * One face, self-hosted by next/font at build time.
  *
  * A family archive is read on bad connections, so nothing here is fetched from
  * a third party at run time: next/font downloads the files during the build and
  * serves them from our own origin, with the metrics inlined so a name never
- * reflows after paint. Both carry the Cyrillic subset — the entire product is
- * in Mongolian, and a display face that silently falls back for Cyrillic would
+ * reflows after paint. It carries the Cyrillic subset — the entire product is
+ * in Mongolian, and a face that silently falls back for Cyrillic would
  * undo the typography everywhere it matters most.
  */
-const display = Playfair_Display({
-  subsets: ['latin', 'cyrillic'],
-  variable: '--font-display-loaded',
-  display: 'swap',
-  weight: ['400', '500', '600'],
-});
-
 const sans = Inter({
   subsets: ['latin', 'cyrillic'],
   variable: '--font-sans-loaded',
@@ -41,15 +34,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Zooming must stay available: a grandparent reading a transcript will pinch.
   maximumScale: 5,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f4efe4' },
-    { media: '(prefers-color-scheme: dark)', color: '#10150f' },
-  ],
+  // One colour: the album's paper. See globals.css for why there is no dark mode.
+  themeColor: '#fffcf8',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="mn" className={`${display.variable} ${sans.variable}`}>
+    <html lang="mn" className={sans.variable}>
       <body>
         <a
           href="#main"

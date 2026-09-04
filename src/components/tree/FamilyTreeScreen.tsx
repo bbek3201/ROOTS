@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { FamilyTree } from './FamilyTree';
+import { FamilyTree, type CoupleArchive } from './FamilyTree';
 import type { FamilyGraph } from '@/lib/relationships/types';
 
 /**
@@ -17,12 +17,16 @@ export function FamilyTreeScreen({
   locale,
   visibleGenerations,
   photoUrls,
+  coupleArchive,
+  canEdit,
 }: {
   graph: FamilyGraph;
   focusPersonId: string | null;
   locale: string;
   visibleGenerations: number;
   photoUrls?: Record<string, string>;
+  coupleArchive?: Record<string, CoupleArchive>;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   return (
@@ -32,6 +36,8 @@ export function FamilyTreeScreen({
       locale={locale}
       visibleGenerations={visibleGenerations}
       photoUrls={photoUrls}
+      coupleArchive={coupleArchive}
+      canEdit={canEdit}
       onOpenPerson={(personId) => router.push(`/person/${personId}`)}
       onOpenCouple={(coupleId) => router.push(`/couple/${coupleId}`)}
     />

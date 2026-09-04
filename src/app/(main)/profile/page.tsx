@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { requireActiveFamily } from '@/lib/family-context';
 import { getMemberships, getProfile, requireUser } from '@/lib/auth/session';
-import { getFamilyGraph } from '@/lib/data/family';
+import { getFamilyGraph, getMediaPaths } from '@/lib/data/family';
+import { getSignedUrls } from '@/lib/media/storage';
 import { aiStatus } from '@/lib/ai';
 import { Display, Eyebrow, SectionLead } from '@/components/ui/Editorial';
 import { Avatar } from '@/components/ui/Avatar';
+import { Card } from '@/components/ui/Card';
 import { ProfileSettings } from '@/components/profile/ProfileSettings';
+import { MyProfileCard } from '@/components/profile/MyProfileCard';
 import { FamilySwitcher } from '@/components/profile/FamilySwitcher';
 import { SignOutButton } from '@/components/profile/SignOutButton';
 import { ArchiveIcon, ChevronRightIcon, ShieldIcon, SparkIcon } from '@/components/icons';
@@ -31,18 +34,34 @@ export default async function ProfilePage() {
 
   const me = membership.person_id ? graph.people.find((p) => p.id === membership.person_id) : null;
 
+  // The viewer's own portrait, resolved the same way every other face is.
+  const myPaths = await getMediaPaths([me?.profile_photo_media_id]);
+  const myPath = me?.profile_photo_media_id ? myPaths.get(me.profile_photo_media_id) : null;
+  const mySigned = myPath ? await getSignedUrls([myPath]) : null;
+  const myPortrait = myPath ? (mySigned?.get(myPath) ?? null) : null;
+
   return (
     <main id="main" className="px-5 pb-12 pt-10">
       {/* The person, before the settings. Even the account screen is about
           somebody in the family rather than about a login. */}
       <header className="flex items-center gap-4">
-        <Avatar person={me ?? null} size="xl" />
+        {myPortrait ? (
+          <img
+            src={myPortrait}
+            alt=""
+            className="h-20 w-20 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <Avatar person={me ?? null} size="xl" />
+        )}
         <div className="min-w-0">
           <Eyebrow>{ROLE_LABELS[membership.role] ?? membership.role}</Eyebrow>
           <Display size="md" className="mt-1.5">
             {profile?.display_name ?? 'Гэр бүлийн гишүүн'}
           </Display>
-          <p className="mt-1 truncate text-sm text-muted">{user.email}</p>
+          <p className="mt-1 truncate text-sm text-muted">
+            {me ? `${displayName(me)}${lifespan(me) ? ` · ${lifespan(me)}` : ''}` : user.email}
+          </p>
         </div>
       </header>
 
@@ -50,8 +69,37 @@ export default async function ProfilePage() {
         {membership.family.name} · {graph.people.length} хүн
       </p>
 
+      {/* Linked to a person? Then this screen is that person's own page to
+          fill in. Not linked yet? Then the only thing worth asking is who
+          they are, because nothing else on this screen means anything until
+          that is answered. */}
+      {me ? (
+        <section className="mt-10">
+          <SectionLead label="Миний тухай" title="Зураг, нэр, түүх" />
+          <Card className="p-5">
+            <MyProfileCard
+              personId={me.id}
+              personName={displayName(me)}
+              displayName={profile?.display_name ?? ''}
+              nickname={me.nickname ?? ''}
+              biography={(me as { biography?: string | null }).biography ?? ''}
+              portraitUrl={myPortrait}
+            />
+          </Card>
+        </section>
+      ) : null}
+
       <section className="mt-10">
-        <SectionLead label="Өөрийгөө холбох" title="Та модны хэн бэ?" />
+        <SectionLead
+          label="Өөрийгөө холбох"
+          title={me ? 'Та модны хэн бэ?' : 'Эхлээд өөрийгөө модонд холбоно уу'}
+        />
+        {!me ? (
+          <p className="mb-3 text-sm text-ink-soft">
+            Холбосны дараа зураг, түүхээ энд нэмэх боломжтой болно. Мөн «таны өвөө»,
+            «таны нагац эгч» гэх мэт хамаарал бүх хуудсанд харагдана.
+          </p>
+        ) : null}
         <ProfileSettings
           memberId={membership.id}
           currentPersonId={membership.person_id}

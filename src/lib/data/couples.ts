@@ -110,3 +110,72 @@ export async function getCoupleProfile(coupleId: string): Promise<CoupleProfile 
     places: [...placeMap.values()],
   };
 }
+
+/* ---------------------------------------------------------------------------
+   Archive summaries, for the family tree
+   --------------------------------------------------------------------------- */
+
+export interface CoupleArchiveSummary {
+  stories: number;
+  photos: number;
+  recordings: number;
+  /** Storage paths for the first few photographs; the caller signs them. */
+  previewPaths: string[];
+}
+
+/**
+ * What every couple in a family holds in the archive, in two queries.
+ *
+ * The tree's detail panel wants to say "12 stories, 34 photographs, 7
+ * recordings" the instant a couple is selected — and selecting a couple is the
+ * most common gesture on that screen, so it cannot be a round trip per card.
+ * A family's couples number in the tens, so summarising all of them once when
+ * the page renders is cheaper than any lazy alternative.
+ */
+export async function getCoupleArchive(familyId: string): Promise<Map<string, CoupleArchiveSummary>> {
+  const supabase = await createClient();
+
+  const [memories, media] = await Promise.all([
+    supabase
+      .from('memories')
+      .select('id, couple_id')
+      .eq('family_id', familyId)
+      .not('couple_id', 'is', null)
+      .is('deleted_at', null),
+    supabase
+      .from('media')
+      .select('couple_id, kind, variant, storage_path, taken_at')
+      .eq('family_id', familyId)
+      .not('couple_id', 'is', null)
+      .is('deleted_at', null)
+      .order('taken_at', { ascending: false, nullsFirst: false }),
+  ]);
+
+  const summaries = new Map<string, CoupleArchiveSummary>();
+  const entry = (coupleId: string): CoupleArchiveSummary => {
+    const existing = summaries.get(coupleId);
+    if (existing) return existing;
+    const created: CoupleArchiveSummary = { stories: 0, photos: 0, recordings: 0, previewPaths: [] };
+    summaries.set(coupleId, created);
+    return created;
+  };
+
+  for (const memory of memories.data ?? []) {
+    if (memory.couple_id) entry(memory.couple_id).stories += 1;
+  }
+
+  for (const item of media.data ?? []) {
+    if (!item.couple_id) continue;
+    const summary = entry(item.couple_id);
+    if (item.kind === 'photo') {
+      // Derived variants (thumbnails, restorations) would double-count a print.
+      if (item.variant !== 'original') continue;
+      summary.photos += 1;
+      if (summary.previewPaths.length < 3) summary.previewPaths.push(item.storage_path);
+    } else if (item.kind === 'audio') {
+      summary.recordings += 1;
+    }
+  }
+
+  return summaries;
+}

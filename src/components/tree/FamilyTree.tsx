@@ -1,35 +1,45 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { buildFamilyIndex } from '@/lib/relationships/graph';
+import { buildFamilyIndex, collectDescendants, getParentEdges } from '@/lib/relationships/graph';
 import { computeRelationship } from '@/lib/relationships/path';
 import { generationWindow } from '@/lib/relationships/generation';
 import { getKinshipLocale } from '@/lib/kinship';
-import {
-  layoutFamilyTree,
-  NODE_HEIGHT,
-  NODE_WIDTH,
-  PARTNER_GAP,
-  ROW_HEIGHT,
-  type TreeLayout,
-  type TreeUnit,
-} from '@/lib/tree/layout';
-import type { FamilyGraph } from '@/lib/relationships/types';
-import { displayName, lifespan } from '@/lib/format';
+import { layoutFamilyTree, type TreeLayout, type TreeUnit } from '@/lib/tree/layout';
+import type { CoupleNode, FamilyGraph, PersonNode } from '@/lib/relationships/types';
+import { displayName, lifespan, yearOf } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
 /**
- * The interactive family tree.
+ * The family tree.
  *
- * Pan and zoom are implemented directly on pointer events rather than with a
- * charting library: the whole interaction is a single transform, and owning it
- * means pinch-zoom on a phone behaves exactly like the rest of the OS instead
- * of like a web chart.
+ * Everything on this canvas is arranged around one claim: a family is built out
+ * of COUPLES, not out of individuals. So a couple is drawn as a large
+ * photographic plate with both faces in it; a person who has not formed a
+ * couple is a smaller, quieter card; and the day they marry, their card becomes
+ * a couple plate in the same place in the tree. Reading down the canvas is
+ * therefore reading the actual grammar of a family — couple, children, couple,
+ * children — without anyone having to explain it.
  *
- * The tree shows a seven-generation window at a time. Generations outside it
- * are NOT deleted or hidden away — the controls above the canvas say how many
- * older generations are in the archive and step into them.
+ * The cards are HTML rather than SVG on purpose. This screen lives or dies on
+ * photography, and real <img> elements inside a transformed layer give us
+ * object-fit, lazy loading and the same warm empty state as the rest of the
+ * album. Only the branches — which must be curves, not org-chart elbows — are
+ * drawn in SVG underneath.
+ *
+ * Pan and zoom are owned here rather than delegated to a charting library: the
+ * whole interaction is a single transform, and owning it means a pinch on a
+ * phone behaves like the rest of the OS instead of like a web chart.
  */
+
+/** Everything the archive knows about one couple, for the detail panel. */
+export interface CoupleArchive {
+  stories: number;
+  photos: number;
+  recordings: number;
+  /** A few signed photograph URLs — the memory preview inside the panel. */
+  previews: string[];
+}
 
 interface Props {
   graph: FamilyGraph;
@@ -38,14 +48,31 @@ interface Props {
   locale?: string;
   visibleGenerations?: number;
   onOpenPerson?: (personId: string) => void;
-  /** The heart between two portraits opens their couple. */
   onOpenCouple?: (coupleId: string) => void;
   /** personId → signed URL of their portrait. The tree is faces, not boxes. */
   photoUrls?: Record<string, string>;
+  /** coupleId → what that couple has in the archive. */
+  coupleArchive?: Record<string, CoupleArchive>;
+  /** Editors get the controls that grow the tree; everyone else just reads. */
+  canEdit?: boolean;
 }
 
-const MIN_SCALE = 0.25;
-const MAX_SCALE = 2.4;
+const MIN_SCALE = 0.18;
+const MAX_SCALE = 1.6;
+/**
+ * Air around the tree when it is fitted.
+ *
+ * Not symmetrical: the search sits over the top of the canvas and the
+ * generation rail over the bottom, so a tree fitted with equal padding tucks
+ * its oldest and youngest generations underneath them.
+ */
+const FIT_INSET = { top: 104, bottom: 112, side: 72 };
+/**
+ * Below this scale a card stops being a photograph and becomes a speck: a
+ * couple plate drawn at 0.3 is still about 90 points wide, which reads as two
+ * faces; much under that and the tree is a diagram of rectangles.
+ */
+const LEGIBLE_SCALE = 0.3;
 
 export function FamilyTree({
   graph,
@@ -55,6 +82,8 @@ export function FamilyTree({
   onOpenPerson,
   onOpenCouple,
   photoUrls = {},
+  coupleArchive = {},
+  canEdit = false,
 }: Props) {
   const index = useMemo(() => buildFamilyIndex(graph), [graph]);
   const kinship = useMemo(() => getKinshipLocale(locale), [locale]);
@@ -66,30 +95,56 @@ export function FamilyTree({
       : { min: 1, max: 1 };
   }, [index]);
 
-  const focusGeneration = focusPersonId
-    ? index.people.get(focusPersonId)?.generation ?? allGenerations.max
-    : allGenerations.max;
-
   const [window_, setWindow] = useState(() =>
-    generationWindow(focusGeneration, allGenerations.min, allGenerations.max, visibleGenerations),
+    generationWindow(allGenerations.min, allGenerations.min, allGenerations.max, visibleGenerations),
   );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set<string>());
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  // The canvas normally sits framed on the page, under the family's cover
+  // photograph. Full screen is for the moment someone stops glancing at the
+  // tree and starts reading it.
+  const [fullscreen, setFullscreen] = useState(false);
+
+  // --- what a collapsed branch folds away ----------------------------------
+  const hiddenPersonIds = useMemo(
+    () => collectHidden(index, [...collapsed]),
+    [index, collapsed],
+  );
+
+  const descendantCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const person of index.people.values()) {
+      counts.set(person.id, collectDescendants(index, person.id).size);
+    }
+    return counts;
+  }, [index]);
 
   const layout = useMemo<TreeLayout>(
-    () => layoutFamilyTree(index, { fromGeneration: window_.from, toGeneration: window_.to }),
-    [index, window_.from, window_.to],
+    () =>
+      layoutFamilyTree(index, {
+        fromGeneration: window_.from,
+        toGeneration: window_.to,
+        hiddenPersonIds,
+      }),
+    [index, window_.from, window_.to, hiddenPersonIds],
   );
 
   // --- viewport -------------------------------------------------------------
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [viewport, setViewport] = useState({ width: 360, height: 480 });
-  const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
+  const stageRef = useRef<HTMLDivElement>(null);
+  // Zero until the canvas has been measured: fitting the tree against a
+  // guessed viewport lands it at the wrong scale and, because the fit only
+  // happens once, it stays there.
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const [transform, setTransform] = useState({ x: 0, y: 0, k: 0.7 });
+  const [panning, setPanning] = useState(false);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinchStart = useRef<{ distance: number; k: number; midX: number; midY: number } | null>(null);
+  const dragged = useRef(false);
 
   useEffect(() => {
-    const element = containerRef.current;
+    const element = stageRef.current;
     if (!element) return;
     const observer = new ResizeObserver(([entry]) => {
       if (!entry) return;
@@ -99,80 +154,167 @@ export function FamilyTree({
     return () => observer.disconnect();
   }, []);
 
-  const fitToView = useCallback(() => {
-    const { width, height, minX, minY } = layout.bounds;
-    if (width <= 0 || height <= 0) return;
-    const padding = 32;
-    const scale = Math.min(
-      (viewport.width - padding * 2) / width,
-      (viewport.height - padding * 2) / height,
-      1.1,
-    );
-    const k = Math.max(MIN_SCALE, Math.min(scale, MAX_SCALE));
-    setTransform({
-      x: viewport.width / 2 - (minX + width / 2) * k,
-      y: viewport.height / 2 - (minY + height / 2) * k,
-      k,
-    });
-  }, [layout.bounds, viewport.width, viewport.height]);
-
-  const centreOn = useCallback(
-    (personId: string, scale?: number) => {
-      const position = layout.personPositions.get(personId);
-      if (!position) return;
-      setTransform((current) => {
-        const k = Math.max(MIN_SCALE, Math.min(scale ?? current.k, MAX_SCALE));
-        return {
-          k,
-          x: viewport.width / 2 - (position.x + NODE_WIDTH / 2) * k,
-          y: viewport.height / 2 - (position.y + NODE_HEIGHT / 2) * k,
-        };
+  /**
+   * Bring a rectangle of the canvas into the middle of the screen.
+   *
+   * "The middle" means the middle of what the reader can actually see: on a
+   * desktop the detail panel occupies the right of the viewport, so the
+   * available centre moves left by half its width. Without that, selecting a
+   * couple slides it neatly underneath the panel describing it.
+   */
+  const frame = useCallback(
+    (
+      box: { x: number; y: number; width: number; height: number },
+      maxScale = 1,
+      insetRight = 0,
+    ) => {
+      if (box.width <= 0 || box.height <= 0) return;
+      const usableWidth = Math.max(viewport.width - insetRight, 240);
+      const scale = Math.min(
+        (usableWidth - FIT_INSET.side * 2) / box.width,
+        (viewport.height - FIT_INSET.top - FIT_INSET.bottom) / box.height,
+        maxScale,
+      );
+      const k = Math.max(MIN_SCALE, Math.min(scale, MAX_SCALE));
+      // The vertical centre of the free space, which is above the true centre
+      // of the viewport because the rail takes more room than the search does.
+      const centreY = FIT_INSET.top + (viewport.height - FIT_INSET.top - FIT_INSET.bottom) / 2;
+      setTransform({
+        k,
+        x: usableWidth / 2 - (box.x + box.width / 2) * k,
+        y: centreY - (box.y + box.height / 2) * k,
       });
     },
-    [layout.personPositions, viewport.width, viewport.height],
+    [viewport.width, viewport.height],
   );
 
-  // The opening view, once the canvas has a real size.
-  //
-  // Whole family first: seeing the shape of it is the reason someone opened
-  // this screen, and landing mid-canvas with a generation cropped off the top
-  // reads as a broken page rather than as a map. Only when the tree is too big
-  // to fit legibly do we fall back to centring on the viewer, which at least
-  // starts them somewhere they recognise.
+  const fitToView = useCallback(() => {
+    const { minX, minY, width, height } = layout.bounds;
+    frame({ x: minX, y: minY, width, height }, 0.92);
+  }, [frame, layout.bounds]);
+
+  /** How much of the viewport the open detail panel takes on this screen. */
+  const panelInset = useCallback(
+    (open: boolean) => (open && viewport.width >= 640 ? 392 : 0),
+    [viewport.width],
+  );
+
+  const focusUnit = useCallback(
+    (unitId: string, withPanel = false) => {
+      const unit = layout.unitsById.get(unitId);
+      if (!unit) return;
+      // A couple and the row of children under it, so focusing answers "who
+      // came from these two?" rather than isolating the card.
+      const children = unit.childUnitIds
+        .map((id) => layout.unitsById.get(id))
+        .filter((child): child is TreeUnit => child !== undefined);
+      const boxes = [unit, ...children];
+      const x = Math.min(...boxes.map((box) => box.x));
+      const right = Math.max(...boxes.map((box) => box.x + box.width));
+      const bottom = Math.max(...boxes.map((box) => box.y + box.height));
+      frame({ x, y: unit.y, width: right - x, height: bottom - unit.y }, 1, panelInset(withPanel));
+    },
+    [frame, layout.unitsById, panelInset],
+  );
+
+  const focusGeneration = useCallback(
+    (generation: number) => {
+      let active = layout;
+      if (generation < window_.from || generation > window_.to) {
+        const next = generationWindow(generation, allGenerations.min, allGenerations.max, visibleGenerations);
+        setWindow(next);
+        active = layoutFamilyTree(index, {
+          fromGeneration: next.from,
+          toGeneration: next.to,
+          hiddenPersonIds,
+        });
+      }
+      const row = active.units.filter((unit) => unit.generation === generation);
+      if (row.length === 0) return;
+      const x = Math.min(...row.map((unit) => unit.x));
+      const right = Math.max(...row.map((unit) => unit.x + unit.width));
+      const y = Math.min(...row.map((unit) => unit.y));
+      const bottom = Math.max(...row.map((unit) => unit.y + unit.height));
+      frame({ x, y, width: right - x, height: bottom - y }, 0.85);
+    },
+    [layout, window_.from, window_.to, allGenerations, visibleGenerations, index, hiddenPersonIds, frame],
+  );
+
+  /**
+   * The opening view.
+   *
+   * The whole shape of the family, when the whole shape still reads: seeing it
+   * is the reason anyone opened this screen. But a phone fitting seven
+   * generations across 400 points produces cards the size of postage stamps,
+   * which is worse than showing less. Below that legibility floor the canvas
+   * opens on the founding couple instead, at a size where their faces are
+   * faces, and the family is explored downward from there.
+   */
   const hasFitted = useRef(false);
   useEffect(() => {
-    if (hasFitted.current || viewport.width < 50) return;
+    if (hasFitted.current || viewport.width < 50 || viewport.height < 50) return;
+    if (layout.units.length === 0) return;
     hasFitted.current = true;
 
     const { width, height } = layout.bounds;
-    const fitScale = Math.min((viewport.width - 64) / width, (viewport.height - 64) / height);
+    const fitScale = Math.min(
+      (viewport.width - FIT_INSET.side * 2) / width,
+      (viewport.height - FIT_INSET.top - FIT_INSET.bottom) / height,
+    );
 
-    if (fitScale >= 0.5 || !focusPersonId || !layout.personPositions.has(focusPersonId)) {
+    if (fitScale >= LEGIBLE_SCALE) {
       fitToView();
-    } else {
-      centreOn(focusPersonId, 0.9);
+      return;
     }
-  }, [viewport.width, viewport.height, focusPersonId, layout.bounds, layout.personPositions, centreOn, fitToView]);
+
+    // The founding couple and the children under them: the smallest piece of
+    // this tree that still says what kind of picture this is.
+    const root = layout.units
+      .filter((unit) => unit.generation === allGenerations.min)
+      .sort((a, b) => b.childUnitIds.length - a.childUnitIds.length)[0];
+
+    if (root) focusUnit(root.id);
+    else focusGeneration(allGenerations.min);
+  }, [
+    viewport.width,
+    viewport.height,
+    layout.bounds,
+    layout.units,
+    fitToView,
+    focusUnit,
+    focusGeneration,
+    allGenerations.min,
+  ]);
 
   // --- pointer interaction --------------------------------------------------
-  const onPointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
-    (event.target as Element).setPointerCapture?.(event.pointerId);
+  // Dragging works from anywhere on the canvas, cards included — grabbing a
+  // photograph to move the tree is the natural gesture, and a card that
+  // swallowed it would make half the surface dead to panning. A drag that
+  // started on a card simply does not count as a click on it.
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    dragged.current = false;
+    setPanning(true);
   };
 
-  const onPointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const previous = pointers.current.get(event.pointerId);
     if (!previous) return;
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
     const active = [...pointers.current.values()];
 
     if (active.length === 1) {
-      setTransform((current) => ({
-        ...current,
-        x: current.x + (event.clientX - previous.x),
-        y: current.y + (event.clientY - previous.y),
-      }));
+      const dx = event.clientX - previous.x;
+      const dy = event.clientY - previous.y;
+      // The pointer is only captured once a real drag has begun. Capturing on
+      // pointerdown would redirect the following click to the canvas, and a
+      // card that cannot be tapped is worse than a drag that ends at the edge.
+      if (!dragged.current) {
+        if (Math.abs(dx) + Math.abs(dy) <= 2) return;
+        dragged.current = true;
+        (event.currentTarget as Element).setPointerCapture?.(event.pointerId);
+      }
+      setTransform((current) => ({ ...current, x: current.x + dx, y: current.y + dy }));
       return;
     }
 
@@ -186,36 +328,75 @@ export function FamilyTree({
         pinchStart.current = { distance, k: transform.k, midX, midY };
         return;
       }
-
       const ratio = distance / (pinchStart.current.distance || 1);
-      const k = Math.max(MIN_SCALE, Math.min(pinchStart.current.k * ratio, MAX_SCALE));
-      setTransform((current) => zoomAround(current, k, midX, midY, containerRef.current));
+      const k = clampScale(pinchStart.current.k * ratio);
+      setTransform((current) => zoomAround(current, k, midX, midY, stageRef.current));
     }
   };
 
-  const endPointer = (event: React.PointerEvent<SVGSVGElement>) => {
+  const endPointer = (event: React.PointerEvent<HTMLDivElement>) => {
     pointers.current.delete(event.pointerId);
     if (pointers.current.size < 2) pinchStart.current = null;
+    if (pointers.current.size === 0) setPanning(false);
   };
 
-  const onWheel = (event: React.WheelEvent<SVGSVGElement>) => {
-    if (!event.ctrlKey && Math.abs(event.deltaY) < 2) return;
-    const factor = Math.exp(-event.deltaY * 0.0015);
+  const onWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    // A trackpad pinch arrives as a ctrl-wheel; a two-finger scroll pans.
+    if (event.ctrlKey || event.metaKey) {
+      const factor = Math.exp(-event.deltaY * 0.0022);
+      setTransform((current) =>
+        zoomAround(current, clampScale(current.k * factor), event.clientX, event.clientY, stageRef.current),
+      );
+      return;
+    }
+    setTransform((current) => ({ ...current, x: current.x - event.deltaX, y: current.y - event.deltaY }));
+  };
+
+  const zoomBy = (factor: number) => {
     setTransform((current) => {
-      const k = Math.max(MIN_SCALE, Math.min(current.k * factor, MAX_SCALE));
-      return zoomAround(current, k, event.clientX, event.clientY, containerRef.current);
+      const k = clampScale(current.k * factor);
+      const ratio = k / current.k;
+      return {
+        k,
+        x: viewport.width / 2 - (viewport.width / 2 - current.x) * ratio,
+        y: viewport.height / 2 - (viewport.height / 2 - current.y) * ratio,
+      };
+    });
+  };
+
+  // --- selection ------------------------------------------------------------
+  const selectedUnit = selectedUnitId ? layout.unitsById.get(selectedUnitId) ?? null : null;
+
+  const selectUnit = (unit: TreeUnit, personId?: string) => {
+    if (dragged.current) return;
+    setSelectedUnitId(unit.id);
+    setSelectedPersonId(personId ?? unit.anchorId);
+    focusUnit(unit.id, true);
+  };
+
+  const closePanel = () => {
+    setSelectedUnitId(null);
+    setSelectedPersonId(null);
+  };
+
+  const toggleCollapse = (unit: TreeUnit) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (next.has(unit.anchorId)) next.delete(unit.anchorId);
+      else next.add(unit.anchorId);
+      return next;
     });
   };
 
   // --- relationship highlighting -------------------------------------------
   const relationship = useMemo(() => {
-    if (!focusPersonId || !selectedId || focusPersonId === selectedId) return null;
-    const result = computeRelationship(index, focusPersonId, selectedId);
+    if (!focusPersonId || !selectedPersonId || focusPersonId === selectedPersonId) return null;
+    const result = computeRelationship(index, focusPersonId, selectedPersonId);
     if (result.descriptor.kind === 'unrelated') return { result, term: kinship.unknown };
     return { result, term: kinship.describe(result.descriptor) };
-  }, [index, focusPersonId, selectedId, kinship]);
+  }, [index, focusPersonId, selectedPersonId, kinship]);
 
-  const highlightedPeople = useMemo(() => {
+  const highlighted = useMemo(() => {
     const ids = new Set<string>();
     for (const step of relationship?.result.path ?? []) ids.add(step.personId);
     return ids;
@@ -231,91 +412,148 @@ export function FamilyTree({
           .toLocaleLowerCase('mn-MN')
           .includes(term),
       )
-      .slice(0, 8);
+      .slice(0, 7);
   }, [index, query]);
-
-  const selectPerson = (personId: string) => {
-    setSelectedId((current) => (current === personId ? null : personId));
-  };
 
   const jumpToPerson = (personId: string) => {
     const person = index.people.get(personId);
     if (!person) return;
     const generation = person.generation ?? 1;
-    // Move the window if the person is outside it, so search can always reach.
+
+    // A person in a generation that is not on screen needs the window moved
+    // first — and the layout of that window computed here rather than a render
+    // later, so the canvas arrives already pointing at them.
+    let active = layout;
     if (generation < window_.from || generation > window_.to) {
-      setWindow(generationWindow(generation, allGenerations.min, allGenerations.max, visibleGenerations));
+      const next = generationWindow(generation, allGenerations.min, allGenerations.max, visibleGenerations);
+      setWindow(next);
+      active = layoutFamilyTree(index, {
+        fromGeneration: next.from,
+        toGeneration: next.to,
+        hiddenPersonIds,
+      });
     }
-    setSelectedId(personId);
+
     setQuery('');
-    requestAnimationFrame(() => centreOn(personId, Math.max(transform.k, 0.85)));
+
+    const unit = active.unitsById.get(active.unitByPerson.get(personId) ?? '');
+    if (!unit) return;
+    setSelectedUnitId(unit.id);
+    setSelectedPersonId(personId);
+
+    const children = unit.childUnitIds
+      .map((id) => active.unitsById.get(id))
+      .filter((child): child is TreeUnit => child !== undefined);
+    const boxes = [unit, ...children];
+    const x = Math.min(...boxes.map((box) => box.x));
+    const right = Math.max(...boxes.map((box) => box.x + box.width));
+    const bottom = Math.max(...boxes.map((box) => box.y + box.height));
+    frame({ x, y: unit.y, width: right - x, height: bottom - unit.y }, 1, panelInset(true));
   };
 
-  const selectedPerson = selectedId ? index.people.get(selectedId) : null;
+  const generations = useMemo(() => {
+    const list: number[] = [];
+    for (let g = allGenerations.min; g <= allGenerations.max; g += 1) list.push(g);
+    return list;
+  }, [allGenerations]);
+
+  const toggleFullscreen = useCallback(() => {
+    setFullscreen((current) => {
+      // The viewport is about to change shape, so the opening fit has to be
+      // allowed to happen again — otherwise the tree stays framed for a window
+      // that is no longer there.
+      hasFitted.current = false;
+      return !current;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') toggleFullscreen();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreen, toggleFullscreen]);
 
   return (
-    <div className="flex h-full flex-col">
-      <TreeControls
-        query={query}
-        onQueryChange={setQuery}
-        matches={matches.map((person) => ({
-          id: person.id,
-          label: displayName(person),
-          detail: lifespan(person),
-        }))}
-        onPick={jumpToPerson}
-        generations={layout.generations}
-        window={window_}
-        allGenerations={allGenerations}
-        onWindowChange={(generation) =>
-          setWindow(generationWindow(generation, allGenerations.min, allGenerations.max, visibleGenerations))
-        }
-        onFit={fitToView}
-      />
-
-      <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden">
+    <div
+      className={cn(
+        'overflow-hidden',
+        fullscreen ? 'fixed inset-0 z-50 bg-[#fffcf8]' : 'relative h-full w-full',
+      )}
+    >
+      <div
+        ref={stageRef}
+        className={cn(
+          'absolute inset-0 touch-none select-none',
+          panning ? 'cursor-grabbing' : 'cursor-grab',
+        )}
+        role="application"
+        aria-label="Гэр бүлийн мод"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endPointer}
+        onPointerCancel={endPointer}
+        onWheel={onWheel}
+      >
         {layout.units.length === 0 ? (
-          <p className="p-8 text-center text-sm text-muted">
+          <p className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm text-[color-mix(in_srgb,#183b32_55%,transparent)]">
             Энэ үеийн хүмүүс хараахан бүртгэгдээгүй байна.
           </p>
         ) : (
-          <svg
-            className="h-full w-full touch-none select-none"
-            role="application"
-            aria-label="Гэр бүлийн мод"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={endPointer}
-            onPointerCancel={endPointer}
-            onPointerLeave={endPointer}
-            onWheel={onWheel}
+          <div
+            className="absolute left-0 top-0 origin-top-left will-change-transform"
+            style={{ transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.k})` }}
           >
-            <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.k})`}>
-              <TreeEdges layout={layout} highlighted={highlightedPeople} />
-              {layout.units.map((unit) => (
-                <TreeUnitNode
-                  key={unit.id}
-                  unit={unit}
-                  index={index}
-                  selectedId={selectedId}
-                  focusPersonId={focusPersonId}
-                  highlighted={highlightedPeople}
-                  onSelect={selectPerson}
-                  onOpen={onOpenPerson}
-                  onOpenCouple={onOpenCouple}
-                  photoUrls={photoUrls}
-                />
-              ))}
-            </g>
-          </svg>
+            <Branches layout={layout} highlighted={highlighted} />
+
+            {layout.units.map((unit) => (
+              <UnitCard
+                key={unit.id}
+                unit={unit}
+                index={index}
+                photoUrls={photoUrls}
+                focusPersonId={focusPersonId}
+                selected={selectedUnitId === unit.id}
+                highlighted={highlighted}
+                collapsed={collapsed.has(unit.anchorId)}
+                hiddenBelow={countBelow(index, unit, descendantCounts)}
+                onSelect={selectUnit}
+                onToggleCollapse={toggleCollapse}
+              />
+            ))}
+          </div>
         )}
       </div>
 
-      {selectedPerson ? (
-        <SelectionPanel
-          name={displayName(selectedPerson)}
-          years={lifespan(selectedPerson)}
-          occupation={selectedPerson.occupation}
+      {/* ---- floating chrome ---- */}
+      <TreeSearch query={query} onQueryChange={setQuery} matches={matches} onPick={jumpToPerson} />
+
+      <ViewControls
+        onZoomIn={() => zoomBy(1.25)}
+        onZoomOut={() => zoomBy(0.8)}
+        onFit={fitToView}
+        fullscreen={fullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        canCollapseAll={collapsed.size > 0}
+        onExpandAll={() => setCollapsed(new Set())}
+      />
+
+      <GenerationRail
+        generations={generations}
+        window={window_}
+        onPick={focusGeneration}
+      />
+
+      {selectedUnit ? (
+        <DetailPanel
+          key={selectedUnit.id}
+          unit={selectedUnit}
+          index={index}
+          photoUrls={photoUrls}
+          archive={coupleArchive}
+          canEdit={canEdit}
           relationshipLabel={relationship?.term.label ?? null}
           relationshipNote={relationship?.term.note ?? null}
           chain={
@@ -325,22 +563,653 @@ export function FamilyTree({
               term: position === 0 ? kinship.self : kinship.describe(step.descriptor).label,
             })) ?? []
           }
-          couples={(index.couplesByPerson.get(selectedPerson.id) ?? []).map((couple) => {
-            const partnerId =
-              couple.person_a_id === selectedPerson.id ? couple.person_b_id : couple.person_a_id;
-            const partner = partnerId ? index.people.get(partnerId) : null;
-            return { id: couple.id, label: partner ? displayName(partner) : 'Хос' };
-          })}
-          onOpen={() => onOpenPerson?.(selectedPerson.id)}
-          onOpenCouple={(coupleId) => onOpenCouple?.(coupleId)}
-          onClose={() => setSelectedId(null)}
+          onOpenPerson={onOpenPerson}
+          onOpenCouple={onOpenCouple}
+          onClose={closePanel}
         />
       ) : null}
     </div>
   );
 }
 
-/** Zoom about a screen point so the point under the fingers stays put. */
+/* ===========================================================================
+   Cards
+   =========================================================================== */
+
+function UnitCard({
+  unit,
+  index,
+  photoUrls,
+  focusPersonId,
+  selected,
+  highlighted,
+  collapsed,
+  hiddenBelow,
+  onSelect,
+  onToggleCollapse,
+}: {
+  unit: TreeUnit;
+  index: ReturnType<typeof buildFamilyIndex>;
+  photoUrls: Record<string, string>;
+  focusPersonId: string | null;
+  selected: boolean;
+  highlighted: Set<string>;
+  collapsed: boolean;
+  hiddenBelow: number;
+  onSelect: (unit: TreeUnit, personId?: string) => void;
+  onToggleCollapse: (unit: TreeUnit) => void;
+}) {
+  const anchor = index.people.get(unit.anchorId);
+  if (!anchor) return null;
+
+  const members = [anchor, ...unit.partners.map((partner) => index.people.get(partner.personId))].filter(
+    (person): person is PersonNode => person !== undefined,
+  );
+  const couple = unit.partners[0] ? index.couples.get(unit.partners[0].coupleId) ?? null : null;
+  const onPath = members.some((person) => highlighted.has(person.id));
+  const isViewer = members.some((person) => person.id === focusPersonId);
+  const childCount = countChildren(index, unit);
+  const hasChildren = childCount > 0;
+
+  return (
+    <div
+      className="absolute"
+      style={{ left: unit.x, top: unit.y, width: unit.width, height: unit.height }}
+    >
+      <button
+        type="button"
+        data-card
+        onClick={() => onSelect(unit)}
+        aria-label={members.map((person) => displayName(person)).join(' ба ')}
+        className={cn(
+          'group relative block h-full w-full overflow-hidden rounded-[22px] text-left',
+          'border bg-[#fffcf8] transition-[transform,box-shadow,border-color] duration-500 ease-out',
+          'hover:-translate-y-[3px]',
+          selected
+            ? 'border-[#183b32] shadow-[0_28px_60px_-32px_rgba(24,59,50,0.55)]'
+            : onPath
+              ? 'border-[color-mix(in_srgb,#183b32_38%,transparent)] shadow-[0_18px_44px_-30px_rgba(24,59,50,0.5)]'
+              : 'border-[color-mix(in_srgb,#183b32_14%,transparent)] shadow-[0_14px_36px_-28px_rgba(24,59,50,0.45)] hover:shadow-[0_26px_56px_-30px_rgba(24,59,50,0.5)]',
+        )}
+      >
+        {/* Photography first: the plate fills the top of the card. */}
+        <div className={cn('flex gap-[3px] bg-[#f2ece1]', unit.kind === 'couple' ? 'h-[196px]' : 'h-[150px]')}>
+          {members.map((person) => (
+            <Portrait key={person.id} person={person} src={photoUrls[person.id]} />
+          ))}
+        </div>
+
+        <div className="px-4 pt-3.5">
+          <p
+            className={cn(
+              'truncate font-display leading-tight tracking-[-0.03em] text-[#183b32]',
+              unit.kind === 'couple' ? 'text-[1.06rem]' : 'text-[0.98rem]',
+            )}
+          >
+            {unit.kind === 'couple'
+              ? members.map((person) => displayName(person)).join(' & ')
+              : displayName(anchor)}
+          </p>
+
+          <p className="mt-1 truncate text-[0.74rem] text-[color-mix(in_srgb,#183b32_52%,transparent)]">
+            {unit.kind === 'couple' ? togetherSince(couple) : lifespan(anchor) || 'Он тодорхойгүй'}
+          </p>
+
+          {unit.kind === 'couple' && childCount > 0 ? (
+            <p className="mt-2 text-[0.68rem] uppercase tracking-[0.16em] text-[color-mix(in_srgb,#183b32_40%,transparent)]">
+              {childCount} хүүхэд
+            </p>
+          ) : null}
+        </div>
+
+        {isViewer ? (
+          <span className="absolute right-3 top-3 rounded-full bg-[#fffcf8]/92 px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.18em] text-[#183b32] backdrop-blur">
+            Та
+          </span>
+        ) : null}
+
+        {/* The interaction indicator: nothing until the pointer arrives. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-3.5 right-4 text-[#183b32] opacity-0 transition-opacity duration-300 group-hover:opacity-40"
+        >
+          →
+        </span>
+      </button>
+
+      {hasChildren || hiddenBelow > 0 ? (
+        <button
+          type="button"
+          data-card
+          onClick={() => onToggleCollapse(unit)}
+          aria-label={collapsed ? 'Салааг дэлгэх' : 'Салааг эвхэх'}
+          aria-expanded={!collapsed}
+          className={cn(
+            'absolute left-1/2 top-full z-10 -translate-x-1/2 translate-y-2.5 rounded-full px-3 py-1.5',
+            'text-[0.7rem] tracking-[0.04em] backdrop-blur transition-colors',
+            collapsed
+              ? 'bg-[#183b32] text-[#fbf9f4]'
+              : 'bg-[#fffcf8]/88 text-[color-mix(in_srgb,#183b32_60%,transparent)] hover:text-[#183b32]',
+          )}
+        >
+          {collapsed ? `+${hiddenBelow || childCount}` : '⌄'}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function Portrait({ person, src }: { person: PersonNode; src?: string }) {
+  return (
+    <div className="relative min-w-0 flex-1 overflow-hidden bg-gradient-to-br from-[#f2ece1] to-[#bdd0c2]">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element -- signed storage URL.
+        <img
+          src={src}
+          alt={displayName(person)}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 flex items-center justify-center font-display text-[2.4rem] text-[color-mix(in_srgb,#183b32_36%,transparent)]"
+        >
+          {displayName(person).slice(0, 1)}
+        </span>
+      )}
+      {person.life_status === 'deceased' ? (
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 h-px bg-[color-mix(in_srgb,#183b32_35%,transparent)]"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/* ===========================================================================
+   Branches
+   =========================================================================== */
+
+/**
+ * The lines between generations.
+ *
+ * Deliberately not org-chart elbows: each child hangs from its parents on a
+ * single soft cubic curve, hairline weight, in the same green as the text at
+ * low opacity. At a glance it reads as a branch rather than as a wire.
+ */
+function Branches({ layout, highlighted }: { layout: TreeLayout; highlighted: Set<string> }) {
+  const pad = 200;
+  const { minX, minY, width, height } = layout.bounds;
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="pointer-events-none absolute"
+      style={{ left: minX - pad, top: minY - pad, width: width + pad * 2, height: height + pad * 2 }}
+      width={width + pad * 2}
+      height={height + pad * 2}
+    >
+      <g transform={`translate(${pad - minX} ${pad - minY})`} fill="none" strokeLinecap="round">
+        {layout.units.map((unit) => {
+          const children = unit.childUnitIds
+            .map((id) => layout.unitsById.get(id))
+            .filter((child): child is TreeUnit => child !== undefined && child.parentUnitId === unit.id);
+          if (children.length === 0) return null;
+
+          const startX = unit.x + unit.width / 2;
+          const startY = unit.y + unit.height;
+
+          return children.map((child) => {
+            const endX = child.x + child.width / 2;
+            const endY = child.y;
+            const active = highlighted.has(unit.anchorId) && highlighted.has(child.anchorId);
+            return (
+              <path
+                key={`${unit.id}->${child.id}`}
+                d={branch(startX, startY, endX, endY)}
+                stroke={active ? '#183b32' : 'color-mix(in srgb, #183b32 22%, transparent)'}
+                strokeWidth={active ? 1.9 : 1.15}
+              />
+            );
+          });
+        })}
+
+        {/* A marriage between two people who each descend from this family. */}
+        {layout.crossLinks.map((link) => {
+          const from = layout.unitsById.get(link.fromUnitId);
+          const to = layout.unitsById.get(link.toUnitId);
+          if (!from || !to) return null;
+          const [left, right] = from.x <= to.x ? [from, to] : [to, from];
+          const y = left.y + 96;
+          return (
+            <path
+              key={`cross:${link.coupleId}`}
+              d={`M ${left.x + left.width} ${y} C ${left.x + left.width + 28} ${y - 22}, ${right.x - 28} ${y - 22}, ${right.x} ${y}`}
+              stroke="color-mix(in srgb, #b4574c 42%, transparent)"
+              strokeWidth={1.2}
+              strokeDasharray="2 6"
+            />
+          );
+        })}
+      </g>
+    </svg>
+  );
+}
+
+/** One soft S-curve from a couple down to a child. */
+function branch(startX: number, startY: number, endX: number, endY: number): string {
+  if (Math.abs(endX - startX) < 1) return `M ${startX} ${startY} V ${endY}`;
+  const drop = (endY - startY) * 0.55;
+  return `M ${startX} ${startY} C ${startX} ${startY + drop}, ${endX} ${endY - drop}, ${endX} ${endY}`;
+}
+
+/* ===========================================================================
+   Chrome
+   =========================================================================== */
+
+function TreeSearch({
+  query,
+  onQueryChange,
+  matches,
+  onPick,
+}: {
+  query: string;
+  onQueryChange: (value: string) => void;
+  matches: PersonNode[];
+  onPick: (personId: string) => void;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-4 pr-[4.5rem] sm:p-6 sm:pr-24">
+      <div className="pointer-events-auto relative w-full max-w-sm sm:max-w-xs">
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Хүн хайх"
+          aria-label="Гэр бүлийн модноос хайх"
+          className="h-12 w-full rounded-full border border-[color-mix(in_srgb,#183b32_10%,transparent)] bg-[#fffcf8]/90 px-5 text-[16px] text-[#183b32] shadow-[0_18px_40px_-30px_rgba(24,59,50,0.5)] backdrop-blur-xl placeholder:text-[color-mix(in_srgb,#183b32_42%,transparent)] focus:border-[color-mix(in_srgb,#183b32_30%,transparent)] focus:outline-none"
+        />
+        {matches.length > 0 ? (
+          <ul className="absolute inset-x-0 top-14 overflow-hidden rounded-3xl border border-[color-mix(in_srgb,#183b32_10%,transparent)] bg-[#fffcf8] p-1.5 shadow-[0_30px_60px_-30px_rgba(24,59,50,0.45)]">
+            {matches.map((person) => (
+              <li key={person.id}>
+                <button
+                  type="button"
+                  onClick={() => onPick(person.id)}
+                  className="flex w-full items-baseline justify-between gap-3 rounded-2xl px-3.5 py-2.5 text-left transition-colors hover:bg-[#f7f2e9]"
+                >
+                  <span className="truncate text-[0.92rem] text-[#183b32]">{displayName(person)}</span>
+                  <span className="shrink-0 text-[0.72rem] text-[color-mix(in_srgb,#183b32_45%,transparent)]">
+                    {lifespan(person)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ViewControls({
+  onZoomIn,
+  onZoomOut,
+  onFit,
+  fullscreen,
+  onToggleFullscreen,
+  canCollapseAll,
+  onExpandAll,
+}: {
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onFit: () => void;
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
+  canCollapseAll: boolean;
+  onExpandAll: () => void;
+}) {
+  const button =
+    'flex h-11 w-11 items-center justify-center text-[1rem] text-[color-mix(in_srgb,#183b32_66%,transparent)] transition-colors hover:text-[#183b32]';
+
+  return (
+    <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-col items-end gap-2 sm:right-6 sm:top-6">
+      <div className="pointer-events-auto flex flex-col overflow-hidden rounded-full border border-[color-mix(in_srgb,#183b32_10%,transparent)] bg-[#fffcf8]/88 backdrop-blur-xl">
+        <button type="button" onClick={onZoomIn} aria-label="Томруулах" className={button}>+</button>
+        <span aria-hidden="true" className="mx-3 h-px bg-[color-mix(in_srgb,#183b32_10%,transparent)]" />
+        <button type="button" onClick={onZoomOut} aria-label="Багасгах" className={button}>−</button>
+        <span aria-hidden="true" className="mx-3 h-px bg-[color-mix(in_srgb,#183b32_10%,transparent)]" />
+        <button type="button" onClick={onFit} aria-label="Бүх модыг харах" className={button}>⛶</button>
+        <span aria-hidden="true" className="mx-3 h-px bg-[color-mix(in_srgb,#183b32_10%,transparent)]" />
+        <button
+          type="button"
+          onClick={onToggleFullscreen}
+          aria-label={fullscreen ? 'Бүтэн дэлгэцээс гарах' : 'Бүтэн дэлгэц'}
+          aria-pressed={fullscreen}
+          className={button}
+        >
+          {fullscreen ? '✕' : '⤢'}
+        </button>
+      </div>
+
+      {canCollapseAll ? (
+        <button
+          type="button"
+          onClick={onExpandAll}
+          className="pointer-events-auto rounded-full border border-[color-mix(in_srgb,#183b32_10%,transparent)] bg-[#fffcf8]/88 px-4 py-2 text-[0.75rem] text-[color-mix(in_srgb,#183b32_65%,transparent)] backdrop-blur-xl transition-colors hover:text-[#183b32]"
+        >
+          Бүгдийг дэлгэх
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The generation rail.
+ *
+ * Seven generations will not fit on one screen at a readable size, and shrinking
+ * the whole canvas until they do produces a diagram nobody can read. So the tree
+ * keeps its scale and the rail moves the viewport instead: one tap takes the
+ * screen to that generation.
+ */
+function GenerationRail({
+  generations,
+  window: activeWindow,
+  onPick,
+}: {
+  generations: number[];
+  window: { from: number; to: number };
+  onPick: (generation: number) => void;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center p-4 sm:p-6">
+      <div className="pointer-events-auto flex max-w-full items-center gap-4 overflow-x-auto rounded-full border border-[color-mix(in_srgb,#183b32_10%,transparent)] bg-[#fffcf8]/88 px-5 py-2.5 backdrop-blur-xl no-scrollbar">
+        <span className="hidden shrink-0 text-[0.62rem] uppercase tracking-[0.24em] text-[color-mix(in_srgb,#183b32_42%,transparent)] sm:block">
+          Үе
+        </span>
+        <ul className="flex items-center gap-1">
+          {generations.map((generation) => {
+            const inWindow = generation >= activeWindow.from && generation <= activeWindow.to;
+            return (
+              <li key={generation}>
+                <button
+                  type="button"
+                  onClick={() => onPick(generation)}
+                  aria-label={`${generation}-р үе рүү очих`}
+                  className={cn(
+                    'flex h-9 min-w-9 items-center justify-center rounded-full px-2.5 text-[0.82rem] tabular-nums transition-colors',
+                    inWindow
+                      ? 'text-[#183b32]'
+                      : 'text-[color-mix(in_srgb,#183b32_38%,transparent)] hover:text-[#183b32]',
+                  )}
+                >
+                  {String(generation).padStart(2, '0')}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/* ===========================================================================
+   Detail panel
+   =========================================================================== */
+
+/**
+ * What a family looks like from the inside.
+ *
+ * A panel rather than a page: the tree stays visible behind it, so opening a
+ * couple never loses the reader's place in the family. It carries only what a
+ * person actually asks at this moment — who these two are, how long they have
+ * been together, who came from them, and what the archive holds about them.
+ */
+function DetailPanel({
+  unit,
+  index,
+  photoUrls,
+  archive,
+  canEdit,
+  relationshipLabel,
+  relationshipNote,
+  chain,
+  onOpenPerson,
+  onOpenCouple,
+  onClose,
+}: {
+  unit: TreeUnit;
+  index: ReturnType<typeof buildFamilyIndex>;
+  photoUrls: Record<string, string>;
+  archive: Record<string, CoupleArchive>;
+  canEdit: boolean;
+  relationshipLabel: string | null;
+  relationshipNote: string | null;
+  chain: Array<{ id: string; name: string; term: string }>;
+  onOpenPerson?: (personId: string) => void;
+  onOpenCouple?: (coupleId: string) => void;
+  onClose: () => void;
+}) {
+  const anchor = index.people.get(unit.anchorId);
+  if (!anchor) return null;
+
+  const partners = unit.partners
+    .map((partner) => ({ couple: index.couples.get(partner.coupleId), person: index.people.get(partner.personId) }))
+    .filter((entry): entry is { couple: CoupleNode; person: PersonNode } =>
+      entry.couple !== undefined && entry.person !== undefined,
+    );
+
+  const primary = partners[0] ?? null;
+  const children = childrenOf(index, unit);
+  const summary = primary ? archive[primary.couple.id] : undefined;
+
+  return (
+    <aside
+      className={cn(
+        'fade-up absolute z-30 overflow-y-auto border border-[color-mix(in_srgb,#183b32_10%,transparent)] bg-[#fffcf8]/96 backdrop-blur-xl',
+        'shadow-[0_40px_80px_-40px_rgba(24,59,50,0.5)]',
+        // Phone: a sheet that leaves the tree visible above it.
+        'inset-x-0 bottom-0 max-h-[62%] rounded-t-[28px] p-6 pb-24',
+        // Desktop: a column beside the tree.
+        'sm:inset-y-6 sm:left-auto sm:right-6 sm:max-h-none sm:w-[368px] sm:rounded-[28px] sm:pb-8',
+      )}
+      aria-label="Дэлгэрэнгүй"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="eyebrow">{unit.generation}-р үе</p>
+          <h2 className="mt-2 font-display text-[1.55rem] leading-tight tracking-[-0.035em] text-[#183b32]">
+            {[anchor, ...partners.map((entry) => entry.person)].map((person) => displayName(person)).join(' & ')}
+          </h2>
+          <p className="mt-1.5 text-[0.85rem] text-[color-mix(in_srgb,#183b32_55%,transparent)]">
+            {primary ? togetherSince(primary.couple) : lifespan(anchor) || 'Он тодорхойгүй'}
+            {children.length > 0 ? ` · ${children.length} хүүхэд` : ''}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Хаах"
+          className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[color-mix(in_srgb,#183b32_50%,transparent)] transition-colors hover:text-[#183b32]"
+        >
+          ✕
+        </button>
+      </div>
+
+      {relationshipLabel ? (
+        <div className="mt-5 rounded-2xl bg-[color-mix(in_srgb,#eef3ee_85%,transparent)] px-4 py-3">
+          <p className="text-[0.9rem] text-[#183b32]">Таны {relationshipLabel.toLocaleLowerCase('mn-MN')}</p>
+          {chain.length > 1 ? (
+            <p className="mt-1 text-[0.75rem] leading-relaxed text-[color-mix(in_srgb,#183b32_58%,transparent)]">
+              {chain.map((step) => `${step.term} (${step.name})`).join(' → ')}
+            </p>
+          ) : null}
+          {relationshipNote ? (
+            <p className="mt-1 text-[0.75rem] text-[color-mix(in_srgb,#183b32_45%,transparent)]">{relationshipNote}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* ---- the people in this card ---- */}
+      <ul className="mt-6 space-y-1.5">
+        {[anchor, ...partners.map((entry) => entry.person)].map((person) => (
+          <li key={person.id}>
+            <button
+              type="button"
+              onClick={() => onOpenPerson?.(person.id)}
+              className="flex w-full items-center gap-3.5 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-[#f7f2e9]"
+            >
+              <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-[#f7f2e9] to-[#cddbcf]">
+                {photoUrls[person.id] ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- signed storage URL.
+                  <img src={photoUrls[person.id]} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center font-display text-[0.95rem] text-[color-mix(in_srgb,#183b32_40%,transparent)]">
+                    {displayName(person).slice(0, 1)}
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.95rem] text-[#183b32]">{displayName(person)}</span>
+                <span className="block truncate text-[0.75rem] text-[color-mix(in_srgb,#183b32_48%,transparent)]">
+                  {[lifespan(person), person.occupation].filter(Boolean).join(' · ') || 'Мэдээлэл нэмэгдээгүй'}
+                </span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {/* ---- what came from them ---- */}
+      {children.length > 0 ? (
+        <section className="mt-6">
+          <p className="eyebrow">Хүүхдүүд</p>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {children.map((child) => (
+              <li key={child.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenPerson?.(child.id)}
+                  className="rounded-full border border-[color-mix(in_srgb,#183b32_12%,transparent)] px-3.5 py-2 text-[0.82rem] text-[color-mix(in_srgb,#183b32_72%,transparent)] transition-colors hover:border-[#183b32] hover:text-[#183b32]"
+                >
+                  {displayName(child)}
+                  {yearOf(child.birth_date) ? (
+                    <span className="ml-1.5 text-[color-mix(in_srgb,#183b32_42%,transparent)]">
+                      {yearOf(child.birth_date)}
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* ---- the archive ---- */}
+      {primary ? (
+        <section className="mt-7">
+          <p className="eyebrow">Дурсамжууд</p>
+
+          {summary && summary.previews.length > 0 ? (
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
+              {summary.previews.slice(0, 3).map((src) => (
+                // eslint-disable-next-line @next/next/no-img-element -- signed storage URL.
+                <img
+                  key={src}
+                  src={src}
+                  alt=""
+                  loading="lazy"
+                  className="aspect-square w-full rounded-xl object-cover"
+                />
+              ))}
+            </div>
+          ) : null}
+
+          <p className="mt-3 text-[0.82rem] text-[color-mix(in_srgb,#183b32_55%,transparent)]">
+            {summary
+              ? [
+                  summary.stories > 0 ? `${summary.stories} түүх` : null,
+                  summary.photos > 0 ? `${summary.photos} зураг` : null,
+                  summary.recordings > 0 ? `${summary.recordings} бичлэг` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || 'Энэ хосын архив хоосон байна.'
+              : 'Энэ хосын архив хоосон байна.'}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => onOpenCouple?.(primary.couple.id)}
+            className="mt-5 flex h-12 w-full items-center justify-center rounded-full bg-[#183b32] text-[0.92rem] text-[#fbf9f4] transition-colors hover:bg-[#12302a]"
+          >
+            Хосын хуудас нээх
+          </button>
+
+          {canEdit ? (
+            // The tree grows here or it does not grow at all: this is where
+            // someone is looking when they remember a child is missing.
+            <a
+              href={`/couple/${primary.couple.id}#add-child`}
+              className="mt-2.5 flex h-12 w-full items-center justify-center rounded-full border border-[color-mix(in_srgb,#183b32_14%,transparent)] text-[0.92rem] text-[color-mix(in_srgb,#183b32_72%,transparent)] transition-colors hover:border-[#183b32] hover:text-[#183b32]"
+            >
+              Хүүхэд нэмэх
+            </a>
+          ) : null}
+        </section>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => onOpenPerson?.(anchor.id)}
+            className="mt-7 flex h-12 w-full items-center justify-center rounded-full bg-[#183b32] text-[0.92rem] text-[#fbf9f4] transition-colors hover:bg-[#12302a]"
+          >
+            Профайл нээх
+          </button>
+          {canEdit ? (
+            <a
+              href={`/person/${anchor.id}/edit`}
+              className="mt-2.5 flex h-12 w-full items-center justify-center rounded-full border border-[color-mix(in_srgb,#183b32_14%,transparent)] text-[0.92rem] text-[color-mix(in_srgb,#183b32_72%,transparent)] transition-colors hover:border-[#183b32] hover:text-[#183b32]"
+            >
+              Мэдээлэл засах
+            </a>
+          ) : null}
+        </>
+      )}
+
+      {partners.length > 1 ? (
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {partners.slice(1).map((entry) => (
+            <li key={entry.couple.id}>
+              <button
+                type="button"
+                onClick={() => onOpenCouple?.(entry.couple.id)}
+                className="rounded-full bg-[#f7f2e9] px-4 py-2 text-[0.8rem] text-[color-mix(in_srgb,#183b32_70%,transparent)] transition-colors hover:text-[#183b32]"
+              >
+                <span className="text-[#b4574c]">♥</span> {displayName(entry.person)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </aside>
+  );
+}
+
+/* ===========================================================================
+   Helpers
+   =========================================================================== */
+
+function clampScale(k: number): number {
+  return Math.max(MIN_SCALE, Math.min(k, MAX_SCALE));
+}
+
+/** Zoom about a screen point so the point under the cursor stays put. */
 function zoomAround(
   current: { x: number; y: number; k: number },
   k: number,
@@ -355,484 +1224,86 @@ function zoomAround(
   return { k, x: px - (px - current.x) * ratio, y: py - (py - current.y) * ratio };
 }
 
-function unitCentreX(unit: TreeUnit): number {
-  const spread = unit.partners.length * (NODE_WIDTH + PARTNER_GAP);
-  return unit.x + NODE_WIDTH / 2 + spread / 2;
+function togetherSince(couple: CoupleNode | null): string {
+  if (!couple) return '';
+  const start = yearOf(couple.marriage_date ?? couple.relationship_start);
+  const end = yearOf(couple.relationship_end);
+  if (!start) return couple.status === 'together' ? 'Хамтдаа' : '';
+  if (end) return `${start} – ${end}`;
+  return `${start} оноос хамтдаа`;
 }
 
-function TreeEdges({ layout, highlighted }: { layout: TreeLayout; highlighted: Set<string> }) {
-  return (
-    <g fill="none" strokeLinecap="round" strokeLinejoin="round">
-      {/* Parent → children. One vertical drop, a horizontal bus, then a drop
-          into each child: orthogonal routing reads as lineage, curves do not. */}
-      {layout.units.map((unit) => {
-        const children = unit.childUnitIds
-          .map((id) => layout.unitsById.get(id))
-          .filter((child): child is TreeUnit => child !== undefined && child.parentUnitId === unit.id);
-        if (children.length === 0) return null;
-
-        const startX = unitCentreX(unit);
-        const startY = unit.y + NODE_HEIGHT;
-        const busY = unit.y + NODE_HEIGHT + (ROW_HEIGHT - NODE_HEIGHT) / 2;
-
-        return (
-          <g key={`edges:${unit.id}`}>
-            {children.map((child) => {
-              const childX = child.x + NODE_WIDTH / 2;
-              const active =
-                highlighted.has(unit.anchorId) && highlighted.has(child.anchorId);
-              return (
-                <path
-                  key={`${unit.id}->${child.id}`}
-                  d={connector(startX, startY, childX, child.y, busY)}
-                  stroke={active ? 'var(--color-forest)' : 'var(--color-sage-soft)'}
-                  strokeWidth={active ? 2.2 : 1.3}
-                  strokeLinecap="round"
-                  opacity={active ? 1 : 0.75}
-                />
-              );
-            })}
-          </g>
-        );
-      })}
-
-      {/* Marriages between two people who each anchor their own unit. */}
-      {layout.crossLinks.map((link) => {
-        const from = layout.unitsById.get(link.fromUnitId);
-        const to = layout.unitsById.get(link.toUnitId);
-        if (!from || !to) return null;
-        const y = from.y + NODE_HEIGHT / 2;
-        return (
-          <path
-            key={`cross:${link.coupleId}`}
-            d={`M ${from.x + from.width} ${y} H ${to.x}`}
-            stroke="var(--color-sage-soft)"
-            strokeWidth={1.4}
-            strokeDasharray="3 5"
-            strokeLinecap="round"
-          />
-        );
-      })}
-    </g>
-  );
+/** Everyone born to this unit's couples, oldest first, de-duplicated. */
+function childrenOf(index: ReturnType<typeof buildFamilyIndex>, unit: TreeUnit): PersonNode[] {
+  const seen = new Set<string>();
+  const children: PersonNode[] = [];
+  for (const memberId of [unit.anchorId, ...unit.partners.map((partner) => partner.personId)]) {
+    for (const edge of index.childEdges.get(memberId) ?? []) {
+      if (seen.has(edge.child_id)) continue;
+      const child = index.people.get(edge.child_id);
+      if (!child) continue;
+      seen.add(child.id);
+      children.push(child);
+    }
+  }
+  return children.sort((a, b) => (a.birth_date ?? '9999') < (b.birth_date ?? '9999') ? -1 : 1);
 }
 
-function TreeUnitNode({
-  unit,
-  index,
-  selectedId,
-  focusPersonId,
-  highlighted,
-  onSelect,
-  onOpen,
-  onOpenCouple,
-  photoUrls,
-}: {
-  unit: TreeUnit;
-  index: ReturnType<typeof buildFamilyIndex>;
-  selectedId: string | null;
-  focusPersonId: string | null;
-  highlighted: Set<string>;
-  onSelect: (personId: string) => void;
-  onOpen?: (personId: string) => void;
-  onOpenCouple?: (coupleId: string) => void;
-  photoUrls: Record<string, string>;
-}) {
-  const members = [
-    { personId: unit.anchorId, offset: 0 },
-    ...unit.partners.map((partner, position) => ({
-      personId: partner.personId,
-      offset: (position + 1) * (NODE_WIDTH + PARTNER_GAP),
-    })),
-  ];
-
-  return (
-    <g transform={`translate(${unit.x} ${unit.y})`}>
-      {/* The couple bond: a line and a heart, drawn between the two portraits. */}
-      {unit.partners.map((partner, position) => {
-        const x1 = NODE_WIDTH / 2 + position * (NODE_WIDTH + PARTNER_GAP);
-        const x2 = x1 + NODE_WIDTH + PARTNER_GAP;
-        const y = 28;
-        return (
-          <g
-            key={`bond:${partner.coupleId}`}
-            role="button"
-            tabIndex={0}
-            aria-label="Хосын хуудас нээх"
-            className="cursor-pointer outline-none"
-            onClick={() => onOpenCouple?.(partner.coupleId)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                onOpenCouple?.(partner.coupleId);
-              }
-            }}
-          >
-            {/* An invisible target: the heart is 11px of glyph, which is not a
-                tap target on a phone. */}
-            <rect
-              x={x1 + 24}
-              y={y - 16}
-              width={x2 - x1 - 48}
-              height={32}
-              fill="transparent"
-            />
-            <line
-              x1={x1 + 30}
-              y1={y}
-              x2={x2 - 30}
-              y2={y}
-              stroke="var(--color-sage-soft)"
-              strokeWidth={1.3}
-            />
-            <text
-              x={(x1 + x2) / 2}
-              y={y + 4}
-              textAnchor="middle"
-              fontSize={11}
-              fill="var(--color-heart)"
-            >
-              ♥
-            </text>
-          </g>
-        );
-      })}
-
-      {members.map(({ personId, offset }) => {
-        const person = index.people.get(personId);
-        if (!person) return null;
-        const isSelected = selectedId === personId;
-        const isFocus = focusPersonId === personId;
-        const isOnPath = highlighted.has(personId);
-        const years = lifespan(person);
-        const photoUrl = photoUrls[personId];
-
-        return (
-          <g
-            key={personId}
-            transform={`translate(${offset} 0)`}
-            role="button"
-            tabIndex={0}
-            aria-label={`${displayName(person)}${years ? `, ${years}` : ''}`}
-            className="cursor-pointer outline-none"
-            onClick={() => onSelect(personId)}
-            onDoubleClick={() => onOpen?.(personId)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                onSelect(personId);
-              }
-            }}
-          >
-            {/* A face, drawn as a circle. No card: a tree of boxes is an org
-                chart, and the whole point of this screen is that these are
-                people. Selection is a ring, which needs no extra chrome. */}
-            <circle
-              cx={NODE_WIDTH / 2}
-              cy={PORTRAIT_CY}
-              r={PORTRAIT_R + 3}
-              fill="none"
-              stroke={
-                isSelected ? 'var(--color-forest)'
-                  : isFocus ? 'var(--color-sage)'
-                  : isOnPath ? 'var(--color-forest-soft)'
-                  : 'transparent'
-              }
-              strokeWidth={isSelected || isFocus ? 2 : 1.6}
-            />
-            <circle
-              cx={NODE_WIDTH / 2}
-              cy={PORTRAIT_CY}
-              r={PORTRAIT_R}
-              fill="var(--color-sage-wash)"
-              stroke="var(--color-line)"
-              strokeWidth={1}
-            />
-            {photoUrl ? (
-              <>
-                <clipPath id={`portrait-${personId}`}>
-                  <circle cx={NODE_WIDTH / 2} cy={PORTRAIT_CY} r={PORTRAIT_R} />
-                </clipPath>
-                <image
-                  href={photoUrl}
-                  x={NODE_WIDTH / 2 - PORTRAIT_R}
-                  y={PORTRAIT_CY - PORTRAIT_R}
-                  width={PORTRAIT_R * 2}
-                  height={PORTRAIT_R * 2}
-                  preserveAspectRatio="xMidYMid slice"
-                  clipPath={`url(#portrait-${personId})`}
-                />
-              </>
-            ) : (
-              <text
-                x={NODE_WIDTH / 2}
-                y={PORTRAIT_CY + 7}
-                textAnchor="middle"
-                fontSize={20}
-                fontFamily="var(--font-display)"
-                fill="var(--color-sage)"
-              >
-                {displayName(person).slice(0, 1)}
-              </text>
-            )}
-
-            <text
-              x={NODE_WIDTH / 2}
-              y={PORTRAIT_CY + PORTRAIT_R + 18}
-              textAnchor="middle"
-              fontSize={11.5}
-              fontFamily="var(--font-display)"
-              fill="var(--color-ink)"
-            >
-              {truncate(displayName(person), 11)}
-            </text>
-            {years ? (
-              <text
-                x={NODE_WIDTH / 2}
-                y={PORTRAIT_CY + PORTRAIT_R + 31}
-                textAnchor="middle"
-                fontSize={9.5}
-                fill="var(--color-muted)"
-              >
-                {years}
-              </text>
-            ) : null}
-            {person.life_status === 'deceased' ? (
-              <circle
-                cx={NODE_WIDTH / 2 + PORTRAIT_R - 4}
-                cy={PORTRAIT_CY - PORTRAIT_R + 6}
-                r={3}
-                fill="var(--color-muted)"
-                opacity={0.55}
-              />
-            ) : null}
-            {isFocus ? (
-              <text
-                x={NODE_WIDTH / 2}
-                y={PORTRAIT_CY + PORTRAIT_R + 44}
-                textAnchor="middle"
-                fontSize={9}
-                fill="var(--color-sage)"
-              >
-                Та
-              </text>
-            ) : null}
-          </g>
-        );
-      })}
-    </g>
-  );
+function countChildren(index: ReturnType<typeof buildFamilyIndex>, unit: TreeUnit): number {
+  return childrenOf(index, unit).length;
 }
 
-/** Portrait geometry, shared by the node and the couple bond. */
-const PORTRAIT_R = 26;
-const PORTRAIT_CY = 28;
+/** How many people a collapsed card is holding out of sight. */
+function countBelow(
+  index: ReturnType<typeof buildFamilyIndex>,
+  unit: TreeUnit,
+  counts: Map<string, number>,
+): number {
+  const members = [unit.anchorId, ...unit.partners.map((partner) => partner.personId)];
+  return Math.max(...members.map((id) => counts.get(id) ?? 0), 0);
+}
 
 /**
- * A parent→child connector with rounded corners.
+ * The people inside collapsed branches.
  *
- * Straight elbows read as a circuit diagram. The radius is clamped to the
- * space actually available so a child directly below its parent still gets a
- * clean vertical line rather than a kink.
+ * Descendants, plus the partners who married into them — leaving a married-in
+ * spouse behind would strand them as a root of their own, which is worse than
+ * hiding one person too many. Someone who has parents of their own elsewhere in
+ * the tree is never hidden: their branch is not the one that was folded.
  */
-function connector(startX: number, startY: number, endX: number, endY: number, busY: number): string {
-  const dx = endX - startX;
-  if (Math.abs(dx) < 1) return `M ${startX} ${startY} V ${endY}`;
+function collectHidden(
+  index: ReturnType<typeof buildFamilyIndex>,
+  anchorIds: string[],
+): Set<string> {
+  const hidden = new Set<string>();
+  if (anchorIds.length === 0) return hidden;
 
-  const direction = Math.sign(dx);
-  const radius = Math.min(14, Math.abs(dx) / 2, (busY - startY) / 2, (endY - busY) / 2);
+  const queue: string[] = [];
+  const add = (personId: string) => {
+    if (hidden.has(personId)) return;
+    hidden.add(personId);
+    queue.push(personId);
+  };
 
-  return [
-    `M ${startX} ${startY}`,
-    `V ${busY - radius}`,
-    `Q ${startX} ${busY} ${startX + direction * radius} ${busY}`,
-    `H ${endX - direction * radius}`,
-    `Q ${endX} ${busY} ${endX} ${busY + radius}`,
-    `V ${endY}`,
-  ].join(' ');
-}
+  for (const anchorId of anchorIds) {
+    const unitMembers = [anchorId];
+    for (const couple of index.couplesByPerson.get(anchorId) ?? []) {
+      const other = couple.person_a_id === anchorId ? couple.person_b_id : couple.person_a_id;
+      if (other) unitMembers.push(other);
+    }
+    for (const memberId of unitMembers) {
+      for (const edge of index.childEdges.get(memberId) ?? []) add(edge.child_id);
+    }
+  }
 
-function truncate(value: string, max: number): string {
-  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
-}
+  while (queue.length > 0) {
+    const personId = queue.pop() as string;
+    for (const edge of index.childEdges.get(personId) ?? []) add(edge.child_id);
+    for (const couple of index.couplesByPerson.get(personId) ?? []) {
+      const other = couple.person_a_id === personId ? couple.person_b_id : couple.person_a_id;
+      if (other && getParentEdges(index, other).length === 0) add(other);
+    }
+  }
 
-function TreeControls({
-  query,
-  onQueryChange,
-  matches,
-  onPick,
-  generations,
-  window: activeWindow,
-  allGenerations,
-  onWindowChange,
-  onFit,
-}: {
-  query: string;
-  onQueryChange: (value: string) => void;
-  matches: Array<{ id: string; label: string; detail: string }>;
-  onPick: (personId: string) => void;
-  generations: number[];
-  window: { from: number; to: number; archivedAbove: number; archivedBelow: number };
-  allGenerations: { min: number; max: number };
-  onWindowChange: (generation: number) => void;
-  onFit: () => void;
-}) {
-  return (
-    <div className="px-5 pb-3">
-      <div className="relative flex items-center gap-2">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Хүн хайх"
-          aria-label="Гэр бүлийн модноос хайх"
-          className="min-h-11 flex-1 rounded-pill border border-transparent bg-parchment-deep/70 px-4 text-[16px] text-ink placeholder:text-muted focus:border-sage-soft focus:bg-surface focus:outline-none"
-        />
-        <button
-          type="button"
-          onClick={onFit}
-          className="min-h-11 shrink-0 rounded-pill px-3 text-sm text-sage"
-        >
-          Бүгд
-        </button>
-
-        {matches.length > 0 ? (
-          <ul className="absolute inset-x-0 top-12 z-20 max-h-64 overflow-auto rounded-2xl border border-line bg-surface p-1 shadow-(--shadow-lift)">
-            {matches.map((match) => (
-              <li key={match.id}>
-                <button
-                  type="button"
-                  onClick={() => onPick(match.id)}
-                  className="flex w-full items-baseline justify-between gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-parchment-deep"
-                >
-                  <span className="text-sm font-medium text-ink">{match.label}</span>
-                  <span className="text-xs text-muted">{match.detail}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-
-      <div className="mt-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        {activeWindow.archivedAbove > 0 ? (
-          <button
-            type="button"
-            onClick={() => onWindowChange(Math.max(allGenerations.min, activeWindow.from - 3))}
-            className="shrink-0 rounded-pill bg-olive-wash px-3 py-1.5 text-xs font-medium text-olive"
-          >
-            ↑ Архивт {activeWindow.archivedAbove} үе
-          </button>
-        ) : null}
-
-        {generations.map((generation) => (
-          <button
-            key={generation}
-            type="button"
-            onClick={() => onWindowChange(generation)}
-            className={cn(
-              'shrink-0 rounded-pill px-3 py-1.5 text-xs font-medium transition-colors',
-              generation >= activeWindow.from && generation <= activeWindow.to
-                ? 'bg-forest-wash text-forest'
-                : 'text-muted hover:text-ink-soft',
-            )}
-          >
-            {generation}-р үе
-          </button>
-        ))}
-
-        {activeWindow.archivedBelow > 0 ? (
-          <button
-            type="button"
-            onClick={() => onWindowChange(Math.min(allGenerations.max, activeWindow.to + 3))}
-            className="shrink-0 rounded-pill bg-olive-wash px-3 py-1.5 text-xs font-medium text-olive"
-          >
-            ↓ Дараагийн {activeWindow.archivedBelow} үе
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function SelectionPanel({
-  name,
-  years,
-  occupation,
-  relationshipLabel,
-  relationshipNote,
-  chain,
-  couples,
-  onOpen,
-  onOpenCouple,
-  onClose,
-}: {
-  name: string;
-  years: string;
-  occupation: string | null;
-  relationshipLabel: string | null;
-  relationshipNote: string | null;
-  chain: Array<{ id: string; name: string; term: string }>;
-  /** This person's marriages, so the couple page is one tap from the tree. */
-  couples: Array<{ id: string; label: string }>;
-  onOpen: () => void;
-  onOpenCouple?: (coupleId: string) => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fade-up border-t border-line bg-surface px-4 py-3 shadow-(--shadow-lift)">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-display text-lg leading-tight text-ink">{name}</p>
-          <p className="text-sm text-muted">
-            {[years, occupation].filter(Boolean).join(' · ') || 'Мэдээлэл нэмэгдээгүй'}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Хаах"
-          className="-mr-1 -mt-1 h-9 w-9 rounded-full text-muted"
-        >
-          ✕
-        </button>
-      </div>
-
-      {relationshipLabel ? (
-        <div className="mt-3 rounded-2xl bg-forest-wash px-3 py-2.5">
-          <p className="text-sm font-medium text-forest">Таны {relationshipLabel.toLocaleLowerCase('mn-MN')}</p>
-          {chain.length > 1 ? (
-            <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-              {chain.map((step) => `${step.term} (${step.name})`).join(' → ')}
-            </p>
-          ) : null}
-          {relationshipNote ? <p className="mt-1 text-xs text-muted">{relationshipNote}</p> : null}
-        </div>
-      ) : null}
-
-      {couples.length > 0 ? (
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {couples.map((couple) => (
-            <li key={couple.id}>
-              <button
-                type="button"
-                onClick={() => onOpenCouple?.(couple.id)}
-                className="min-h-10 rounded-pill bg-parchment-deep px-4 text-sm text-ink-soft transition-colors hover:text-ink"
-              >
-                <span className="text-heart">♥</span> {couple.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      <button
-        type="button"
-        onClick={onOpen}
-        className="mt-3 min-h-12 w-full rounded-full bg-forest text-sm font-medium text-forest-ink"
-      >
-        Профайл нээх
-      </button>
-    </div>
-  );
+  return hidden;
 }

@@ -1,309 +1,280 @@
-import Link from 'next/link';
 import { requireActiveFamily } from '@/lib/family-context';
-import { getFamilyGraph, getFamilyHome, getMediaPaths, type MemoryWithCover } from '@/lib/data/family';
-import { buildFamilyIndex, getCoupleChildren } from '@/lib/relationships/graph';
-import { getFamilyTimeline } from '@/lib/data/timeline';
+import { can } from '@/lib/auth/session';
+import { getJoinCode } from '@/lib/data/join-code';
+import { getFamilyGraph, getFamilyHome, getMediaPaths } from '@/lib/data/family';
+import { listMemories } from '@/lib/data/memories';
+import { listInterviews } from '@/lib/data/interviews';
+import { buildFamilyIndex, type FamilyIndex } from '@/lib/relationships/graph';
 import { getSignedUrls } from '@/lib/media/storage';
-import { Photo, PhotoOverlay } from '@/components/ui/Photo';
-import { Display, Eyebrow, SectionLead } from '@/components/ui/Editorial';
-import { EmptyState } from '@/components/ui/States';
-import { Avatar } from '@/components/ui/Avatar';
-import { ChevronRightIcon, MicIcon, SearchIcon, TreeIcon } from '@/components/icons';
-import { displayName, formatDate, yearOf } from '@/lib/format';
-import type { PersonNode } from '@/lib/relationships/types';
+import { FamilyHome, type GalleryPerson, type HeroPlate } from '@/components/home/FamilyHome';
+import type { LineageBand } from '@/components/home/Lineage';
+import type { MosaicItem } from '@/components/home/Mosaic';
+import type { VoiceEntry } from '@/components/home/Voices';
+import { displayName, lifespan, yearOf } from '@/lib/format';
+import type { FamilyGraph, PersonNode } from '@/lib/relationships/types';
+import type { MemoryRow } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * The home screen.
+ * The family home — data only.
  *
- * It opens with a photograph at full bleed and the family's name over it,
- * because the first thing someone should feel on opening ROOTS is recognition,
- * not navigation. Everything below is a single column of quiet sections in
- * order of how alive they are: the newest memory, the moments behind it, the
- * dates the family is heading towards, and the people themselves.
- *
- * Deliberately absent: counters in badges, activity feeds, dashboards. A count
- * of rows is what a database is proud of, not what a family is.
+ * Everything about how this page LOOKS lives in <FamilyHome>. What happens here
+ * is the reverse: read the graph, the memories, the recordings, resolve the
+ * signed URLs in one round trip, and hand down a finished view model. Splitting
+ * it this way keeps the fetch fan-out (which must stay one wave of parallel
+ * queries) away from the layout, and makes the cover renderable without a
+ * session for design review.
  */
 export default async function FamilyHomePage() {
   const membership = await requireActiveFamily();
   const familyId = membership.family_id;
 
-  const [graph, home, timeline] = await Promise.all([
+  const [graph, home, memoryList, interviews, joinCode] = await Promise.all([
     getFamilyGraph(familyId),
     getFamilyHome(familyId),
-    getFamilyTimeline(familyId, 4),
+    listMemories(familyId, { limit: 24 }),
+    listInterviews(familyId),
+    // Only an admin can be shown the code, and only an admin's page asks: the
+    // RPC refuses anyone else, so asking for everyone would be a wasted call.
+    can(membership, 'administer') ? getJoinCode(familyId) : Promise.resolve(null),
   ]);
 
-  const withCovers = home.recentMemories
-    .map((memory) => ({ memory, path: coverPath(memory) }))
-    .filter((entry): entry is { memory: MemoryWithCover; path: string } => entry.path !== null);
-
-  // Faces for the connections strip: the people closest to the viewer if we
-  // know who they are, otherwise the oldest generation.
-  const people = [...graph.people].sort(
-    (a, b) => (a.generation ?? 99) - (b.generation ?? 99) || (a.birth_date ?? '').localeCompare(b.birth_date ?? ''),
-  );
-  const featuredPeople = people.slice(0, 8);
-
-  // A family in ROOTS is a chain of couples, not a list of individuals — so the
-  // couples come before the people on the home screen, with the oldest first.
   const index = buildFamilyIndex(graph);
-  const couples = [...graph.couples]
-    .filter((couple) => couple.person_b_id)
-    .sort((a, b) => (a.marriage_date ?? '9999').localeCompare(b.marriage_date ?? '9999'))
-    .slice(0, 6)
-    .map((couple) => ({
-      couple,
-      a: index.people.get(couple.person_a_id),
-      b: couple.person_b_id ? index.people.get(couple.person_b_id) : undefined,
-      children: getCoupleChildren(index, couple.id).length,
+  const generations = new Set(graph.people.map((person) => person.generation ?? 0)).size;
+
+  // ---- Photographs -------------------------------------------------------
+  const covers = (memoryList.memories as unknown as MemoryWithMedia[])
+    .map((memory) => ({ memory, path: coverPath(memory) }))
+    .filter((entry): entry is CoverEntry => entry.path !== null);
+
+  const heroCovers = covers.slice(0, 3);
+  const wallCovers = covers.slice(3, 13);
+  // The closing photograph should not repeat the hero unless it has to.
+  const closingCover = covers.length > 3 ? covers[covers.length - 1] : covers[0];
+
+  // ---- People ------------------------------------------------------------
+  const bandSource = buildBands(graph, index);
+  const galleryPeople = [...graph.people]
+    .sort(
+      (a, b) =>
+        // Faces before initials — the gallery is a portrait wall, and a screen
+        // of monograms is not one.
+        Number(Boolean(b.profile_photo_media_id)) - Number(Boolean(a.profile_photo_media_id)) ||
+        (a.generation ?? 99) - (b.generation ?? 99),
+    )
+    .slice(0, 8);
+
+  const personPaths = await getMediaPaths(
+    [...bandSource.flatMap((band) => band.people), ...galleryPeople].map(
+      (person) => person.profile_photo_media_id,
+    ),
+  );
+
+  // The family's own cover photograph, if they have chosen one. It outranks
+  // anything picked automatically: it is the picture the family says is them.
+  const coverPaths = await getMediaPaths([membership.family.cover_media_id]);
+  const familyCoverPath = membership.family.cover_media_id
+    ? coverPaths.get(membership.family.cover_media_id) ?? null
+    : null;
+
+  // One signing round trip for every image on the page.
+  const urls = await getSignedUrls([
+    ...covers.map((entry) => entry.path),
+    ...personPaths.values(),
+    ...(familyCoverPath ? [familyCoverPath] : []),
+  ]);
+
+  const portraitOf = (person: PersonNode): string | null => {
+    const path = person.profile_photo_media_id ? personPaths.get(person.profile_photo_media_id) : null;
+    return path ? (urls.get(path) ?? null) : null;
+  };
+
+  const memoryPlates: HeroPlate[] = heroCovers.map((entry) => ({
+    src: urls.get(entry.path) ?? null,
+    alt: entry.memory.title,
+    initial: entry.memory.title.slice(0, 1),
+  }));
+
+  const familyCover = familyCoverPath ? urls.get(familyCoverPath) ?? null : null;
+  const hero: HeroPlate[] = familyCover
+    ? [
+        { src: familyCover, alt: membership.family.name, initial: membership.family.name.slice(0, 1) },
+        ...memoryPlates,
+      ].slice(0, 3)
+    : memoryPlates;
+
+  const bands: LineageBand[] = bandSource.map((band) => ({
+    key: band.key,
+    label: band.label,
+    overflow: band.overflow,
+    units: band.units.map((unit) => ({
+      id: unit.id,
+      href: unit.href,
+      people: unit.people.map((person) => ({
+        id: person.id,
+        name: displayName(person),
+        year: yearOf(person.birth_date),
+        photoUrl: portraitOf(person),
+        initial: displayName(person).slice(0, 1),
+      })),
+    })),
+  }));
+
+  const wall: MosaicItem[] = wallCovers.map(({ memory, path }) => ({
+    id: memory.id,
+    href: `/memories/${memory.id}`,
+    src: urls.get(path) ?? null,
+    title: memory.title,
+    meta: memory.memory_date ? yearOf(memory.memory_date) : memory.contributor_name,
+  }));
+
+  const gallery: GalleryPerson[] = galleryPeople.map((person) => ({
+    id: person.id,
+    href: `/person/${person.id}`,
+    name: displayName(person),
+    meta:
+      [person.occupation, lifespan(person)].filter(Boolean).join(' · ') ||
+      `${person.generation ?? 1}-р үе`,
+    src: portraitOf(person),
+  }));
+
+  const voices: VoiceEntry[] = interviews
+    .filter((interview) => interview.subject)
+    .slice(0, 4)
+    .map((interview) => ({
+      id: interview.id,
+      href: `/interview/${interview.id}`,
+      subject: displayName(interview.subject),
+      title: interview.title ?? 'Амьдралын түүх',
+      meta: interview.total > 0 ? `${interview.answered}/${interview.total} асуулт` : 'Эхлээгүй',
     }));
 
-  const personPhotoPaths = await getMediaPaths([
-    ...featuredPeople.map((person) => person.profile_photo_media_id),
-    ...couples.flatMap((entry) => [entry.a?.profile_photo_media_id, entry.b?.profile_photo_media_id]),
-  ]);
-
-  const urls = await getSignedUrls([
-    ...withCovers.map((entry) => entry.path),
-    ...personPhotoPaths.values(),
-  ]);
-
-  const [featured, ...moments] = withCovers;
-  const heroMemory = featured?.memory;
-  const generations = new Set(graph.people.map((person) => person.generation ?? 0)).size;
-  const isEmpty = graph.people.length === 0;
-
   return (
-    <main id="main" className="pb-10">
-      {/* ---- Hero ------------------------------------------------------ */}
-      <section className="relative">
-        <Photo
-          src={featured ? urls.get(featured.path) : null}
-          alt={heroMemory ? heroMemory.title : membership.family.name}
-          ratio="hero"
-          rounded={false}
-          priority
-          initial={membership.family.name.slice(0, 1)}
-          className="rounded-b-4xl"
-        >
-          <PhotoOverlay className="p-6 pb-7">
-            <Eyebrow className="text-white/70">Танай гэр бүл</Eyebrow>
-            <Display size="xl" className="mt-2 text-white">
-              {membership.family.name}
-            </Display>
-            <p className="mt-2.5 text-sm text-white/80">
-              {graph.people.length > 0
-                ? `${generations} үеийн ${graph.people.length} хүн · ${home.counts.memories} дурсамж`
-                : 'Эхний хүнээ нэмээд эхлүүлье'}
-            </p>
-          </PhotoOverlay>
-        </Photo>
-
-        <Link
-          href="/search"
-          aria-label="Хайх"
-          className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-md transition-colors hover:bg-black/40"
-        >
-          <SearchIcon size={19} />
-        </Link>
-      </section>
-
-      <div className="px-5">
-        {isEmpty ? (
-          <EmptyState
-            className="mt-8"
-            icon={<TreeIcon size={30} />}
-            title="Архив хоосон байна"
-            description="Хамгийн ахмад хүнээсээ эхэлье. Хос, хүүхдүүдийг нэмэхэд хамаарал автоматаар бүрдэнэ."
-            action={{ label: 'Эхний хүнийг нэмэх', href: '/family/add-person' }}
-          />
-        ) : null}
-
-        {/* ---- The newest memory, told rather than listed ---------------- */}
-        {heroMemory ? (
-          <section className="mt-9">
-            <Eyebrow className="mb-3">Сүүлийн дурсамж</Eyebrow>
-            <Link href={`/memories/${heroMemory.id}`} className="group block">
-              <Display as="h3" size="md" className="transition-colors group-hover:text-forest">
-                {heroMemory.title}
-              </Display>
-              <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-soft measure line-clamp-3">
-                {heroMemory.description ?? heroMemory.body ?? ''}
-              </p>
-              <p className="mt-3 text-sm text-muted">
-                {heroMemory.memory_date
-                  ? formatDate(heroMemory.memory_date, heroMemory.date_precision)
-                  : 'Огноо тодорхойгүй'}
-                {' · '}
-                {heroMemory.contributor_name}
-              </p>
-            </Link>
-          </section>
-        ) : null}
-
-        {/* ---- Moments: photographs, edge to edge ------------------------ */}
-        {moments.length > 0 ? (
-          <section className="mt-10">
-            <SectionLead
-              label="Гэр бүлийн мөчүүд"
-              title="Дурсамжийн хана"
-              action={<Link href="/memories">Бүгд</Link>}
-            />
-            <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
-              {moments.slice(0, 8).map(({ memory, path }) => (
-                <Link key={memory.id} href={`/memories/${memory.id}`} className="w-40 shrink-0">
-                  <Photo
-                    src={urls.get(path)}
-                    alt={memory.title}
-                    ratio="portrait"
-                    initial={memory.title.slice(0, 1)}
-                  />
-                  <p className="mt-2 truncate text-sm text-ink">{memory.title}</p>
-                  <p className="truncate text-xs text-muted">
-                    {memory.memory_date ? yearOf(memory.memory_date) : ''}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {/* ---- Couples: the unit the whole archive is built from --------- */}
-        {couples.length > 0 ? (
-          <section className="mt-10">
-            <SectionLead
-              label="Гэр бүлийн үндэс"
-              title="Хосууд"
-              action={<Link href="/family/tree">Мод</Link>}
-            />
-            <ul className="divide-y divide-line/70">
-              {couples.map(({ couple, a, b, children }) => (
-                <li key={couple.id}>
-                  <Link href={`/couple/${couple.id}`} className="flex items-center gap-4 py-4">
-                    <span className="flex shrink-0 items-center">
-                      <Avatar
-                        person={a ?? null}
-                        photoUrl={a ? photoUrlFor(a, personPhotoPaths, urls) : null}
-                        size="md"
-                      />
-                      <Avatar
-                        person={b ?? null}
-                        photoUrl={b ? photoUrlFor(b, personPhotoPaths, urls) : null}
-                        size="md"
-                        className="-ml-4 ring-2 ring-parchment"
-                      />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-display text-[1.15rem] text-ink">
-                        {displayName(a)} <span className="text-heart">♥</span> {displayName(b)}
-                      </span>
-                      <span className="mt-0.5 block text-sm text-muted">
-                        {[
-                          couple.marriage_date ? `${yearOf(couple.marriage_date)} оноос` : null,
-                          children > 0 ? `${children} хүүхэд` : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ') || 'Огноо тодорхойгүй'}
-                      </span>
-                    </span>
-                    <ChevronRightIcon size={17} className="shrink-0 text-muted" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        {/* ---- Dates ---------------------------------------------------- */}
-        {timeline.length > 0 ? (
-          <section className="mt-10">
-            <SectionLead label="Он цагийн хэлхээс" title="Чухал огноо" />
-            <ul className="divide-y divide-line/70">
-              {timeline.map((entry) => (
-                <li key={entry.id} className="flex items-baseline gap-5 py-3.5">
-                  <span className="w-12 shrink-0 font-display text-[1.05rem] text-sage">
-                    {yearOf(entry.date) || '—'}
-                  </span>
-                  <span className="min-w-0 flex-1 text-[0.95rem] text-ink">{entry.title}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        {/* ---- People --------------------------------------------------- */}
-        {featuredPeople.length > 0 ? (
-          <section className="mt-10">
-            <SectionLead
-              label="Гэр бүлийн холбоо"
-              title="Танай хүмүүс"
-              action={<Link href="/family/tree">Мод</Link>}
-            />
-            <div className="no-scrollbar -mx-5 flex gap-4 overflow-x-auto px-5">
-              {featuredPeople.map((person) => (
-                <PersonChip
-                  key={person.id}
-                  person={person}
-                  photoUrl={photoUrlFor(person, personPhotoPaths, urls)}
-                />
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {/* ---- The one prompt on the screen ------------------------------ */}
-        <section className="mt-10">
-          <Link
-            href={home.resumableInterview ? `/interview/${home.resumableInterview.id}` : '/interview'}
-            className="flex items-center gap-4 rounded-(--radius-card) bg-sage-wash px-5 py-5 transition-colors hover:bg-forest-wash"
-          >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-forest">
-              <MicIcon size={19} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-display text-[1.05rem] text-ink">
-                {home.resumableInterview ? 'Ярилцлагаа үргэлжлүүлэх' : 'Дуу хоолойг нь үлдээе'}
-              </span>
-              <span className="mt-0.5 block text-sm text-ink-soft">
-                {home.resumableInterview
-                  ? (home.resumableInterview.title ?? 'Амьдралын түүх')
-                  : 'Хорин асуулт. Хариултууд нь үүрд үлдэнэ.'}
-              </span>
-            </span>
-            <ChevronRightIcon size={18} className="shrink-0 text-sage" />
-          </Link>
-        </section>
-      </div>
-    </main>
+    <FamilyHome
+      familyName={membership.family.name}
+      isEmpty={graph.people.length === 0}
+      joinCode={joinCode && joinCode.isEnabled ? joinCode.code : null}
+      generations={generations}
+      stats={{
+        people: graph.people.length,
+        memories: home.counts.memories,
+        media: home.counts.media,
+      }}
+      hero={hero}
+      heroCaption={
+        // The caption names the photograph behind the headline. When that is
+        // the family's own cover it needs no caption — the name is already
+        // over it — so this only speaks for an automatically chosen memory.
+        familyCover
+          ? null
+          : heroCovers[0]?.memory.memory_date
+            ? `${yearOf(heroCovers[0].memory.memory_date)} · ${heroCovers[0].memory.title}`
+            : null
+      }
+      bands={bands}
+      wall={wall}
+      gallery={gallery}
+      voices={voices}
+      interview={{
+        href: home.resumableInterview ? `/interview/${home.resumableInterview.id}` : '/interview',
+        label: home.resumableInterview ? 'Ярилцлагаа үргэлжлүүлэх' : 'Ярилцлага эхлүүлэх',
+      }}
+      closingSrc={closingCover ? (urls.get(closingCover.path) ?? null) : null}
+    />
   );
 }
 
-function PersonChip({ person, photoUrl }: { person: PersonNode; photoUrl: string | null }) {
-  return (
-    <Link href={`/person/${person.id}`} className="w-18 shrink-0 text-center">
-      <Avatar person={person} photoUrl={photoUrl} size="lg" className="mx-auto" />
-      <span className="mt-2 block truncate text-xs text-ink">{displayName(person)}</span>
-      <span className="block truncate text-[0.7rem] text-muted">{yearOf(person.birth_date) || ''}</span>
-    </Link>
-  );
+/* ---------------------------------------------------------------------------
+   Data shaping
+   --------------------------------------------------------------------------- */
+
+type MemoryWithMedia = MemoryRow & {
+  media?: Array<{ id: string; kind: string; variant: string; storage_path: string }>;
+};
+
+interface CoverEntry {
+  memory: MemoryWithMedia;
+  path: string;
 }
 
 /** The first original photograph attached to a memory, if it has one. */
-function coverPath(memory: MemoryWithCover): string | null {
+function coverPath(memory: MemoryWithMedia): string | null {
   const cover = (memory.media ?? []).find(
     (item) => item.kind === 'photo' && item.variant === 'original',
   );
   return cover?.storage_path ?? null;
 }
 
-function photoUrlFor(
-  person: PersonNode,
-  paths: Map<string, string>,
-  urls: Map<string, string>,
-): string | null {
-  const path = person.profile_photo_media_id ? paths.get(person.profile_photo_media_id) : null;
-  return path ? (urls.get(path) ?? null) : null;
+interface RawUnit {
+  id: string;
+  href: string;
+  people: PersonNode[];
+}
+
+interface RawBand {
+  key: string;
+  label: string;
+  units: RawUnit[];
+  people: PersonNode[];
+  overflow: number;
+}
+
+/** How many generations, and how many faces per generation, the cover shows. */
+const MAX_BANDS = 4;
+const MAX_UNITS_PER_BAND = 5;
+
+/**
+ * Group the family into one band of faces per generation, couples kept whole.
+ *
+ * Oldest generations first, and it is the NEWEST that get dropped when a family
+ * outgrows the cover: the top of a tree is the part nobody else has a copy of.
+ * Within a band a couple is one unit, because the archive is built out of
+ * couples and splitting a pair here would misstate the shape of the family.
+ */
+function buildBands(graph: FamilyGraph, index: FamilyIndex): RawBand[] {
+  const byGeneration = new Map<number, PersonNode[]>();
+  for (const person of graph.people) {
+    const generation = person.generation ?? 1;
+    const bucket = byGeneration.get(generation) ?? [];
+    bucket.push(person);
+    byGeneration.set(generation, bucket);
+  }
+
+  return [...byGeneration.keys()]
+    .sort((a, b) => a - b)
+    .slice(0, MAX_BANDS)
+    .map((generation) => {
+      const members = byGeneration.get(generation) ?? [];
+      const memberIds = new Set(members.map((person) => person.id));
+      const placed = new Set<string>();
+      const units: RawUnit[] = [];
+
+      // Couples first, so a pair is never split apart by the fallback pass.
+      for (const couple of graph.couples) {
+        if (!memberIds.has(couple.person_a_id) || placed.has(couple.person_a_id)) continue;
+        const a = index.people.get(couple.person_a_id);
+        if (!a) continue;
+        const b = couple.person_b_id ? index.people.get(couple.person_b_id) : undefined;
+        placed.add(a.id);
+        if (b) placed.add(b.id);
+        units.push({ id: couple.id, href: `/couple/${couple.id}`, people: b ? [a, b] : [a] });
+      }
+
+      for (const person of members) {
+        if (placed.has(person.id)) continue;
+        placed.add(person.id);
+        units.push({ id: person.id, href: `/person/${person.id}`, people: [person] });
+      }
+
+      const shown = units.slice(0, MAX_UNITS_PER_BAND);
+
+      return {
+        key: `generation-${generation}`,
+        label: `${generation}-р үе`,
+        units: shown,
+        people: shown.flatMap((unit) => unit.people),
+        overflow: units.slice(MAX_UNITS_PER_BAND).flatMap((unit) => unit.people).length,
+      };
+    });
 }

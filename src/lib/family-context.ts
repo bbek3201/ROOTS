@@ -4,8 +4,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { getMemberships, type Membership } from '@/lib/auth/session';
+import { ACTIVE_FAMILY_COOKIE } from '@/lib/family/active-family';
 
-export const ACTIVE_FAMILY_COOKIE = 'roots.family';
+export { ACTIVE_FAMILY_COOKIE };
 
 /**
  * Which family the user is currently viewing.

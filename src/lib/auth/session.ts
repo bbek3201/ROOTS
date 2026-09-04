@@ -13,7 +13,17 @@ import type { FamilyMemberRow, FamilyRole, FamilyRow, ProfileRow } from '@/types
  */
 
 export interface Membership extends FamilyMemberRow {
-  family: Pick<FamilyRow, 'id' | 'name' | 'default_locale' | 'visible_generations' | 'root_person_id' | 'root_couple_id'>;
+  family: Pick<
+    FamilyRow,
+    | 'id'
+    | 'name'
+    | 'description'
+    | 'default_locale'
+    | 'visible_generations'
+    | 'root_person_id'
+    | 'root_couple_id'
+    | 'cover_media_id'
+  >;
 }
 
 export const getCurrentUser = cache(async () => {
@@ -39,20 +49,64 @@ export const getProfile = cache(async (): Promise<ProfileRow | null> => {
   return data ?? null;
 });
 
-/** Every family this user is an active member of, newest first. */
+/**
+ * Columns of `families` the app reads alongside a membership.
+ *
+ * Split in two because these two lists can be out of step: a deploy carries new
+ * code before someone runs the migration that adds the column it asks for. The
+ * BASE list is everything that has existed since the first migration, and it is
+ * the fallback below.
+ */
+const FAMILY_BASE_COLUMNS =
+  'id, name, description, default_locale, visible_generations, root_person_id, root_couple_id';
+const FAMILY_COLUMNS = `${FAMILY_BASE_COLUMNS}, cover_media_id`;
+
+/**
+ * Every family this user is an active member of, newest first.
+ *
+ * The fallback is not defensive programming for its own sake. Everything in
+ * ROOTS hangs off this list: an empty result does not mean "query failed", it
+ * means "this person has no family", and the app responds by sending them to
+ * onboarding. So a database one migration behind — missing a single column this
+ * build happens to ask for — would silently lock every existing member OUT of
+ * their own archive, in a loop they cannot escape by creating a new one.
+ *
+ * Asking again for the columns that have always existed costs one round trip on
+ * a database that is behind, and nothing at all on one that is current.
+ */
 export const getMemberships = cache(async (): Promise<Membership[]> => {
   const user = await getCurrentUser();
   if (!user) return [];
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('family_members')
-    .select('*, family:families!inner(id, name, default_locale, visible_generations, root_person_id, root_couple_id)')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .order('joined_at', { ascending: false });
 
-  if (error || !data) return [];
-  return data as unknown as Membership[];
+  const load = (columns: string) =>
+    supabase
+      .from('family_members')
+      .select(`*, family:families!inner(${columns})`)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .order('joined_at', { ascending: false });
+
+  const { data, error } = await load(FAMILY_COLUMNS);
+  if (!error && data) return data as unknown as Membership[];
+
+  console.error(
+    '[roots] membership query failed, retrying without newer columns:',
+    error?.message ?? 'no data',
+    '— apply the migrations in supabase/migrations to restore full functionality.',
+  );
+
+  const fallback = await load(FAMILY_BASE_COLUMNS);
+  if (fallback.error || !fallback.data) {
+    console.error('[roots] membership query failed:', fallback.error?.message ?? 'no data');
+    return [];
+  }
+
+  // The archive works without the newer column; it simply has no cover yet.
+  return fallback.data.map((row) => {
+    const membership = row as unknown as Membership;
+    return { ...membership, family: { ...membership.family, cover_media_id: null } };
+  });
 });
 
 /**

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { describeRpcError } from '@/lib/supabase/errors';
 import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/Field';
+import { rememberActiveFamily } from '@/lib/family/active-family';
 
 /**
  * Creating a family calls the create_family() RPC rather than inserting a row.
@@ -37,7 +38,7 @@ export function CreateFamilyForm() {
       return;
     }
 
-    document.cookie = `roots.family=${data}; path=/; max-age=31536000; samesite=lax`;
+    rememberActiveFamily(data);
     router.replace('/family');
     router.refresh();
   };

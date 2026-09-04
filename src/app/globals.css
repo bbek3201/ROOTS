@@ -24,43 +24,52 @@
 @theme {
   /* The loaded faces come from next/font (see app/layout.tsx). The stacks
      behind them are what renders if a font file never arrives. */
-  --font-display: var(--font-display-loaded), ui-serif, Georgia, 'Noto Serif', serif;
+  /* One face, two roles. The archive used to set headlines in a serif, which
+     read as a literary quarterly; the product is a contemporary album people
+     send to their parents, so headlines are the sans set heavy and tight and
+     `--font-display` now points at it. Kept as a separate token so the two
+     roles stay nameable — and so a serif could be reinstated in one line. */
   --font-sans: var(--font-sans-loaded), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Roboto, Arial, sans-serif;
+  --font-display: var(--font-sans);
 
-  /* Warm neutrals — ivory paper, warm beige, soft charcoal */
-  --color-parchment: #f5f2ea;
-  --color-parchment-deep: #eae4d7;
-  --color-surface: #fffefb;
-  --color-ink: #2a2e29;
-  --color-ink-soft: #4e544c;
-  --color-muted: #8b9089;
-  --color-line: #e9e4d8;
+  /* Warm neutrals — the album's paper. `parchment` is the page, `surface` the
+     lighter plane that sits on it, and `ink` is a deep green rather than a grey:
+     nothing in this product is neutral black. */
+  --color-parchment: #fffcf8;
+  --color-parchment-deep: #f2ece1;
+  --color-surface: #ffffff;
+  --color-ink: #183b32;
+  --color-ink-soft: #4a6a5e;
+  --color-muted: #86988f;
+  --color-line: #e7e1d5;
 
   /* Greens — deep forest for weight, soft sage for calm, olive for metadata.
      `sage` and `olive` are the text-safe depths; the `-soft` and `-wash`
      variants are the fills that go under them. */
-  --color-forest: #1f3d2c;
-  --color-forest-ink: #f7f5ee;
-  --color-forest-soft: #2f5940;
+  --color-forest: #183b32;
+  --color-forest-ink: #fbf9f4;
+  --color-forest-soft: #12302a;
   --color-forest-tint: #cddbcf;
-  --color-forest-wash: #edf1ea;
-  --color-sage: #5f7a62;
-  --color-sage-soft: #a7bda7;
-  --color-sage-wash: #e9efe7;
-  --color-olive: #77855f;
-  --color-olive-wash: #eeeee1;
+  --color-forest-wash: #eef3ee;
+  --color-sage: #5f7a68;
+  --color-sage-soft: #afc7b8;
+  --color-sage-wash: #eaf0ec;
+  --color-olive: #7d8f80;
+  --color-olive-wash: #f4f1e7;
 
-  /* Brand surface — the deep green panel of the sign-in and invite screens.
-     Deliberately absent from the dark-mode block: this pair is a printed
-     colour, like ink on a cover, and must not flip with the OS theme or the
-     ivory text on it would land on a light green ground. */
-  --color-brand-deep: #1c3527;
+  /* The two accent colours of the brand, available to every screen. */
+  --color-cream: #f7f2e9;
+  --color-blush: #f3d8d4;
+  --color-gold: #c9a96e;
+
+  /* Brand surface — the deep green panel of the sign-in and invite screens. */
+  --color-brand-deep: #183b32;
   --color-brand-fg: #f3efe4;
 
   /* Semantic — red only ever means "a bond" or "a danger", and stays muted */
   --color-heart: #b4574c;
   --color-danger: #a24a40;
-  --color-danger-wash: #f6e9e6;
+  --color-danger-wash: #f8ebe8;
 
   --radius-card: 1.5rem;
   --radius-photo: 1.25rem;
@@ -73,46 +82,13 @@
   --shadow-green: 0 10px 24px -14px rgb(31 61 44 / 0.5);
 }
 
-/* Dark mode is not an inversion — it is the same archive by lamplight.
-   Tailwind v4 emits @theme values as custom properties on :root and references
-   them from the utilities, so overriding the same properties in a media query
-   re-themes every utility at once. @theme itself cannot be nested in a media
-   query, which is why this block is plain CSS. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-parchment: #141713;
-    --color-parchment-deep: #0d100c;
-    --color-surface: #1c211b;
-    --color-ink: #eeefe9;
-    --color-ink-soft: #cbd0c6;
-    --color-muted: #949a90;
-    --color-line: #2d332c;
-
-    --color-forest: #8fb497;
-    --color-forest-ink: #10160f;
-    --color-forest-soft: #7ba384;
-    --color-forest-tint: #26332a;
-    --color-forest-wash: #1b241c;
-    --color-sage: #a3bda4;
-    --color-sage-soft: #46583f;
-    --color-sage-wash: #1d251d;
-    --color-olive: #b3bf94;
-    --color-olive-wash: #23271a;
-
-    --color-heart: #d4796d;
-    --color-danger: #d4796d;
-    --color-danger-wash: #2b1d1a;
-
-    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px -12px rgb(0 0 0 / 0.6);
-    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px -20px rgb(0 0 0 / 0.7);
-    --shadow-green: 0 8px 20px -10px rgb(0 0 0 / 0.6);
-  }
-
-  body {
-    background-image:
-      radial-gradient(circle at 50% -10%, rgb(143 180 151 / 0.07), transparent 55%);
-  }
-}
+/* There is deliberately no dark mode.
+   ---------------------------------------------------------------------------
+   ROOTS is a printed object — an album on warm paper — and the whole design
+   rests on that ground: photographs read as prints on it, the deep green reads
+   as ink, the washes read as light falling across a page. Inverting it turned
+   the product into a dashboard at night, which is the one thing it must never
+   look like. The palette above is therefore the only palette. */
 
 /* ---------------------------------------------------------------------------
    Base
@@ -125,6 +101,10 @@
 html {
   /* Prevent iOS zooming the layout when a form field is focused. */
   -webkit-text-size-adjust: 100%;
+  /* Light-only, stated to the browser: without this a device in dark mode
+     renders form controls, scrollbars and autofill on a dark ground inside an
+     otherwise warm-white page. */
+  color-scheme: light;
 }
 
 body {
@@ -134,18 +114,28 @@ body {
   font-size: 16px;
   line-height: 1.55;
   overscroll-behavior-y: none;
-  /* A faint grain so large empty areas read as paper, not as a blank screen. */
+  /* The atmosphere, on every screen rather than only the home page: four
+     enormous, nearly invisible washes pinned to the edges of the viewport.
+     Fixed, so scrolling moves the content through the light. */
   background-image:
-    radial-gradient(circle at 50% -10%, rgb(95 122 98 / 0.07), transparent 55%);
+    radial-gradient(70rem 46rem at 88% -12%, rgb(243 216 212 / 0.5), transparent 62%),
+    radial-gradient(64rem 44rem at -14% 12%, rgb(247 242 233 / 0.85), transparent 60%),
+    radial-gradient(72rem 50rem at 12% 96%, rgb(175 199 184 / 0.32), transparent 64%),
+    radial-gradient(50rem 40rem at 96% 74%, rgb(201 169 110 / 0.13), transparent 62%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, .font-display {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  line-height: 1.12;
+/* In `base` rather than unlayered: this is a default, and a page that states
+   its own face on a heading — the editorial home sets a bold sans — must be
+   able to win without an override selector. */
+@layer base {
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.034em;
+    line-height: 1.12;
+  }
 }
 
 /* Respect the platform's motion preference everywhere, not per component. */
@@ -260,3 +250,178 @@ h1, h2, h3, .font-display {
 @utility recording-pulse {
   animation: roots-pulse 1.4s ease-in-out infinite;
 }
+
+/* ===========================================================================
+   The editorial surface
+   ---------------------------------------------------------------------------
+   The family home is not a screen in an app — it is the cover of the album,
+   and it is built on its own light-only ground rather than on the app's
+   themeable one. Everything below is scoped to `.editorial` and written in
+   plain custom properties on purpose: these colours are printed colours. They
+   must not invert at lamplight, must not follow the OS theme, and must not
+   drift when the app palette is retuned.
+
+   Warm white paper, deep forest ink, and four barely-there washes — cream,
+   sage, blush, gold — that live at the EDGES of sections. Nothing here is
+   allowed to be a background strong enough to be noticed as a colour.
+   =========================================================================== */
+
+/* Everything below sits in Tailwind's `components` layer so that a utility on
+   the element always wins: unlayered CSS outranks every layer, which is how a
+   `rounded-full` portrait ends up a squircle and a `text-[#fbf9f4]` heading
+   ends up dark green. Utilities are the escape hatch; these are the defaults. */
+@layer components {
+  .editorial {
+    --ed-paper: #fffcf8;
+    --ed-cream: #f7f2e9;
+    --ed-sage: #afc7b8;
+    --ed-blush: #f3d8d4;
+    --ed-gold: #c9a96e;
+    --ed-ink: #183b32;
+    --ed-ink-soft: color-mix(in srgb, #183b32 72%, transparent);
+    --ed-muted: color-mix(in srgb, #183b32 50%, transparent);
+    --ed-hair: color-mix(in srgb, #183b32 10%, transparent);
+    --ed-hair-strong: color-mix(in srgb, #183b32 16%, transparent);
+
+    /* Photographs carry the page, so the radii are large enough to read as a
+       printed plate rather than as a UI card. */
+    --ed-radius: 28px;
+    --ed-radius-sm: 20px;
+
+    position: relative;
+    isolation: isolate;
+    color-scheme: light;
+    background: var(--ed-paper);
+    color: var(--ed-ink);
+  }
+
+  /* The atmosphere. Four enormous, nearly invisible washes pinned to the edges
+     of the page — the reason the paper reads as warm and alive rather than as a
+     flat white div. Fixed, so scrolling moves the content through the light. */
+  .editorial::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(70rem 46rem at 88% -12%, color-mix(in srgb, var(--ed-blush) 52%, transparent), transparent 62%),
+      radial-gradient(64rem 44rem at -14% 12%, color-mix(in srgb, var(--ed-cream) 88%, transparent), transparent 60%),
+      radial-gradient(72rem 50rem at 12% 96%, color-mix(in srgb, var(--ed-sage) 34%, transparent), transparent 64%),
+      radial-gradient(50rem 40rem at 96% 74%, color-mix(in srgb, var(--ed-gold) 14%, transparent), transparent 62%),
+      var(--ed-paper);
+  }
+
+  /* One measure for the whole page. Wide enough to be a website, gutters wide
+     enough that the content never touches the glass. */
+  .ed-shell {
+    width: 100%;
+    max-width: 1360px;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 5vw, 4.5rem);
+  }
+
+  .ed-eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--ed-ink) 46%, transparent);
+  }
+
+  /* Three display sizes, all fluid. The hero is deliberately enormous: at
+     desktop width it lands around 88px, which is the size at which a headline
+     stops being a label and starts being the thing you came to read.
+
+     The face is the SANS, set heavy and tight — not the archive's serif. A serif
+     at this scale reads as a literary quarterly; the album wants the confident,
+     contemporary voice of a product people in their twenties would send to their
+     parents. The serif keeps everything below display size. */
+  .ed-display {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    line-height: 1.03;
+    letter-spacing: -0.042em;
+    text-wrap: balance;
+    color: var(--ed-ink);
+  }
+  .ed-display-xl { font-size: clamp(2.6rem, 4.7vw, 4.35rem); }
+  .ed-display-lg { font-size: clamp(2rem, 3.4vw, 3.15rem); line-height: 1.08; }
+  .ed-display-md { font-size: clamp(1.5rem, 2.2vw, 2.1rem); line-height: 1.12; letter-spacing: -0.032em; }
+
+  .ed-lead {
+    font-size: clamp(1.02rem, 1.15vw, 1.2rem);
+    line-height: 1.62;
+    color: var(--ed-ink-soft);
+    max-width: 44ch;
+  }
+
+  .ed-meta { font-size: 0.9rem; color: var(--ed-muted); }
+
+  /* Buttons sized for a website, not for a thumb bar: tall, wide, and only two
+     of them on the whole hero. */
+  .ed-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    min-height: 3.5rem;
+    padding-inline: 2rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .ed-btn-primary {
+    background: var(--ed-ink);
+    color: #fbf9f4;
+    box-shadow: 0 18px 34px -22px color-mix(in srgb, var(--ed-ink) 85%, transparent);
+  }
+  .ed-btn-primary:hover { background: #12302a; transform: translateY(-1px); }
+  .ed-btn-ghost {
+    background: transparent;
+    color: var(--ed-ink);
+    border-color: var(--ed-hair-strong);
+  }
+  .ed-btn-ghost:hover { background: color-mix(in srgb, var(--ed-cream) 70%, transparent); border-color: var(--ed-ink); }
+
+  /* A photographic plate. The ground underneath is warm, because a picture that
+     has not loaded yet should look like paper, never like a hole. */
+  .ed-frame {
+    position: relative;
+    overflow: hidden;
+    /* A grid or flex item's automatic minimum size is its content's min-content
+       width, and an <img> contributes its intrinsic pixel width — so without
+       this a 900px photograph pushes the whole column past the viewport on a
+       phone. This is the fix for that blowout, applied once. */
+    min-width: 0;
+    border-radius: var(--ed-radius);
+    background: linear-gradient(152deg, var(--ed-cream), color-mix(in srgb, var(--ed-sage) 42%, var(--ed-paper)));
+    isolation: isolate;
+  }
+  .ed-frame img { height: 100%; width: 100%; object-fit: cover; }
+
+  /* Bands. Colour arrives as a wash across a whole section, never as a card. */
+  .ed-band-cream {
+    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--ed-cream) 78%, transparent) 18%, color-mix(in srgb, var(--ed-cream) 78%, transparent) 82%, transparent);
+  }
+  .ed-band-sage {
+    background: linear-gradient(168deg, color-mix(in srgb, var(--ed-sage) 30%, var(--ed-paper)), color-mix(in srgb, var(--ed-cream) 90%, var(--ed-paper)));
+  }
+
+  .ed-hair { border-top: 1px solid var(--ed-hair); }
+}
+
+/* The app's shared Photo and Avatar components render inside this surface, so
+   their themeable ground is re-pointed at the printed one here rather than
+   forking the components. */
+/* Ground only — no radius. This rule has to stay unlayered to outrank the
+   `photo-frame` utility's background, and a border-radius here would outrank
+   `rounded-full` on every avatar too. */
+.editorial .photo-frame {
+  background: linear-gradient(152deg, var(--ed-cream), color-mix(in srgb, var(--ed-sage) 42%, var(--ed-paper)));
+}
+.editorial .photo-frame > span { color: color-mix(in srgb, var(--ed-ink) 30%, transparent); }
+

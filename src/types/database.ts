@@ -78,12 +78,29 @@ export type FamilyRow = {
   description: string | null;
   root_couple_id: string | null;
   root_person_id: string | null;
+  /** The photograph the whole family is shown under. */
+  cover_media_id: string | null;
   visible_generations: number;
   default_locale: string;
   created_by: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+};
+
+/** The short, spoken code that lets a relative into the archive. */
+export type FamilyJoinCodeRow = {
+  family_id: string;
+  code: string;
+  role: Extract<FamilyRole, 'viewer' | 'contributor' | 'editor'>;
+  is_enabled: boolean;
+  expires_at: string | null;
+  max_uses: number | null;
+  use_count: number;
+  created_by: string | null;
+  rotated_at: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type FamilyMemberRow = {
@@ -581,6 +598,7 @@ export type Database = {
       profiles: Table<ProfileRow, 'id' | 'display_name'>;
       families: Table<FamilyRow, 'name'>;
       family_members: Table<FamilyMemberRow, 'family_id' | 'user_id'>;
+      family_join_codes: Table<FamilyJoinCodeRow, 'family_id' | 'code'>;
       locations: Table<LocationRow, 'family_id' | 'name'>;
       people: Table<PersonRow, 'family_id' | 'first_name'>;
       couples: Table<CoupleRow, 'family_id' | 'person_a_id'>;
@@ -675,6 +693,40 @@ export type Database = {
         }>;
       };
       accept_invitation: { Args: { p_token: string }; Returns: string };
+      get_join_code: {
+        Args: { p_family_id: string };
+        Returns: Array<{
+          code: string; role: FamilyRole; is_enabled: boolean;
+          expires_at: string | null; max_uses: number | null;
+          use_count: number; rotated_at: string;
+        }>;
+      };
+      rotate_join_code: { Args: { p_family_id: string }; Returns: string };
+      set_join_code_policy: {
+        Args: {
+          p_family_id: string; p_is_enabled?: boolean | null; p_role?: FamilyRole | null;
+          p_expires_at?: string | null; p_max_uses?: number | null;
+        };
+        Returns: undefined;
+      };
+      preview_join_code: {
+        Args: { p_code: string };
+        Returns: Array<{
+          family_id: string; family_name: string; role: FamilyRole; member_count: number;
+        }>;
+      };
+      join_family_with_code: { Args: { p_code: string }; Returns: string };
+      update_my_person: {
+        Args: {
+          p_person_id: string; p_biography?: string | null;
+          p_nickname?: string | null; p_photo_media_id?: string | null;
+        };
+        Returns: undefined;
+      };
+      set_family_cover: {
+        Args: { p_family_id: string; p_media_id?: string | null };
+        Returns: undefined;
+      };
       export_family: { Args: { p_family_id: string }; Returns: Json };
       delete_memory: { Args: { p_memory_id: string }; Returns: undefined };
       delete_family: { Args: { p_family_id: string; p_confirm_name: string }; Returns: undefined };

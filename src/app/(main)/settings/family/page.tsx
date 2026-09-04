@@ -6,6 +6,7 @@ import { Card, SectionHeading } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/States';
 import { InviteManager } from '@/components/family/InviteManager';
+import { JoinCodeCard } from '@/components/family/JoinCodeCard';
 import { MemberList } from '@/components/family/MemberList';
 import { DangerZone } from '@/components/family/DangerZone';
 import { relativeTime } from '@/lib/format';
@@ -56,7 +57,15 @@ export default async function FamilySettingsPage() {
 
       <main id="main" className="px-4 pb-8 pt-5">
         <section className="mb-6">
-          <SectionHeading title="Урих" subtitle="Урилгын холбоос нэг удаа л харагдана" />
+          <SectionHeading
+            title="Гэр бүлийн код"
+            subtitle="Танайхан бүртгүүлээд энэ кодоор нэгдэнэ"
+          />
+          <JoinCodeCard familyId={membership.family_id} />
+        </section>
+
+        <section className="mb-6">
+          <SectionHeading title="Тодорхой хүнийг урих" subtitle="Урилгын холбоос нэг удаа л харагдана" />
           <InviteManager
             familyId={membership.family_id}
             pending={(invitations.data ?? []).map((invitation) => ({
