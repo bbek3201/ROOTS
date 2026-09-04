@@ -4,6 +4,7 @@ import { Plate } from '@/components/home/Plate';
 import { Lineage, type LineageBand } from '@/components/home/Lineage';
 import { Mosaic, type MosaicItem } from '@/components/home/Mosaic';
 import { Voices, type VoiceEntry } from '@/components/home/Voices';
+import { News, type NewsEntry } from '@/components/home/News';
 
 /**
  * The family home, as a picture.
@@ -56,6 +57,8 @@ export interface FamilyHomeProps {
   wall: MosaicItem[];
   gallery: GalleryPerson[];
   voices: VoiceEntry[];
+  /** Added since this member last opened the family. Empty means a quiet week. */
+  news: NewsEntry[];
   interview: { href: string; label: string };
   closingSrc: string | null;
 }
@@ -72,6 +75,7 @@ export function FamilyHome({
   wall,
   gallery,
   voices,
+  news,
   interview,
   closingSrc,
 }: FamilyHomeProps) {
@@ -207,6 +211,9 @@ export function FamilyHome({
           ) : null}
         </div>
       </section>
+
+      {/* ================= Since you last looked =========================== */}
+      <News entries={news} />
 
       {isEmpty ? (
         <section className="ed-shell pb-28">

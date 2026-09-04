@@ -112,6 +112,8 @@ export type FamilyMemberRow = {
   person_id: string | null;
   invited_by: string | null;
   joined_at: string;
+  /** Null means this member has never opened the family — nothing is "new" yet. */
+  last_seen_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -727,6 +729,8 @@ export type Database = {
         Args: { p_family_id: string; p_media_id?: string | null };
         Returns: undefined;
       };
+      /** Marks this visit and returns the PREVIOUS mark, which is what "new since" means. */
+      touch_last_seen: { Args: { p_family_id: string }; Returns: string | null };
       export_family: { Args: { p_family_id: string }; Returns: Json };
       delete_memory: { Args: { p_memory_id: string }; Returns: undefined };
       delete_family: { Args: { p_family_id: string; p_confirm_name: string }; Returns: undefined };

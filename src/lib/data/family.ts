@@ -95,21 +95,37 @@ export interface ActivityEntry {
   resource_type: string | null;
   created_at: string;
   actor_name: string | null;
+  /** Where the entry leads. News nobody can open is just noise. */
+  href: string;
+  /** Added since this member last opened the family. */
+  isNew: boolean;
 }
 
 /**
- * Recent family activity, assembled from the content itself rather than the
- * audit log — the audit log is an admin-only security record, while this is the
- * warm "your cousin added three photos" feed everyone should see.
+ * What has happened in this family, newest first.
+ *
+ * Assembled from the content itself rather than the audit log — the audit log
+ * is an admin-only security record, while this is the warm "your cousin added
+ * three photographs" feed that everyone should see, and that is the only thing
+ * that brings a family back to an archive.
+ *
+ * There is no notifications table behind this. `since` is the member's own
+ * last_seen_at, and "new" is a comparison against it rather than a stored,
+ * delivered, separately-deletable copy of each event. A first visit (null)
+ * marks nothing as new: arriving to nine years of family history all flagged
+ * unread tells you nothing.
  */
-export async function getFamilyActivity(familyId: string, limit = 8): Promise<ActivityEntry[]> {
+export async function getFamilyActivity(
+  familyId: string,
+  { since = null, limit = 8 }: { since?: string | null; limit?: number } = {},
+): Promise<ActivityEntry[]> {
   const supabase = await createClient();
 
   const [memories, media, people] = await Promise.all([
     supabase.from('memories').select('id, title, contributor_name, created_at')
       .eq('family_id', familyId).is('deleted_at', null)
       .order('created_at', { ascending: false }).limit(limit),
-    supabase.from('media').select('id, kind, uploaded_by_name, created_at')
+    supabase.from('media').select('id, kind, uploaded_by_name, created_at, memory_id, person_id')
       .eq('family_id', familyId).is('deleted_at', null).eq('variant', 'original')
       .order('created_at', { ascending: false }).limit(limit),
     supabase.from('people').select('id, first_name, created_at')
@@ -117,13 +133,14 @@ export async function getFamilyActivity(familyId: string, limit = 8): Promise<Ac
       .order('created_at', { ascending: false }).limit(limit),
   ]);
 
-  const entries: ActivityEntry[] = [
+  const entries: Array<Omit<ActivityEntry, 'isNew'>> = [
     ...(memories.data ?? []).map((row) => ({
       id: `memory:${row.id}`,
       action: `«${row.title}» дурсамж нэмэгдлээ`,
       resource_type: 'memory',
       created_at: row.created_at,
       actor_name: row.contributor_name,
+      href: `/memories/${row.id}`,
     })),
     ...(media.data ?? []).map((row) => ({
       id: `media:${row.id}`,
@@ -131,6 +148,12 @@ export async function getFamilyActivity(familyId: string, limit = 8): Promise<Ac
       resource_type: 'media',
       created_at: row.created_at,
       actor_name: row.uploaded_by_name,
+      // A file on its own has no page; follow it to whatever it was attached to.
+      href: row.memory_id
+        ? `/memories/${row.memory_id}`
+        : row.person_id
+          ? `/person/${row.person_id}`
+          : '/memories',
     })),
     ...(people.data ?? []).map((row) => ({
       id: `person:${row.id}`,
@@ -138,12 +161,14 @@ export async function getFamilyActivity(familyId: string, limit = 8): Promise<Ac
       resource_type: 'person',
       created_at: row.created_at,
       actor_name: null,
+      href: `/person/${row.id}`,
     })),
   ];
 
   return entries
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
-    .slice(0, limit);
+    .slice(0, limit)
+    .map((entry) => ({ ...entry, isNew: since !== null && entry.created_at > since }));
 }
 
 function mediaActionLabel(kind: string): string {
@@ -153,6 +178,22 @@ function mediaActionLabel(kind: string): string {
     case 'video': return 'Видео бичлэг нэмэгдлээ';
     default: return 'Баримт архивт нэмэгдлээ';
   }
+}
+
+/**
+ * Mark this member's visit, and answer "what had they already seen?".
+ *
+ * Called while rendering the family home. The RPC returns the PREVIOUS mark, so
+ * the page the member is looking at right now still shows everything that
+ * arrived since their last visit — advancing the clock first and then reading it
+ * would clear the news in the same breath as announcing it.
+ */
+export async function markFamilySeen(familyId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('touch_last_seen', { p_family_id: familyId });
+  // Never fail a page load over a read marker.
+  if (error) return null;
+  return (data as string | null) ?? null;
 }
 
 /**

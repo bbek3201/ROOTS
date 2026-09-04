@@ -1,7 +1,7 @@
 import { requireActiveFamily } from '@/lib/family-context';
 import { can } from '@/lib/auth/session';
 import { getJoinCode } from '@/lib/data/join-code';
-import { getFamilyGraph, getFamilyHome, getMediaPaths } from '@/lib/data/family';
+import { getFamilyActivity, getFamilyGraph, getFamilyHome, getMediaPaths, markFamilySeen } from '@/lib/data/family';
 import { listMemories } from '@/lib/data/memories';
 import { listInterviews } from '@/lib/data/interviews';
 import { buildFamilyIndex, type FamilyIndex } from '@/lib/relationships/graph';
@@ -10,7 +10,7 @@ import { FamilyHome, type GalleryPerson, type HeroPlate } from '@/components/hom
 import type { LineageBand } from '@/components/home/Lineage';
 import type { MosaicItem } from '@/components/home/Mosaic';
 import type { VoiceEntry } from '@/components/home/Voices';
-import { displayName, lifespan, yearOf } from '@/lib/format';
+import { displayName, lifespan, relativeTime, yearOf } from '@/lib/format';
 import type { FamilyGraph, PersonNode } from '@/lib/relationships/types';
 import type { MemoryRow } from '@/types/database';
 
@@ -30,7 +30,11 @@ export default async function FamilyHomePage() {
   const membership = await requireActiveFamily();
   const familyId = membership.family_id;
 
-  const [graph, home, memoryList, interviews, joinCode] = await Promise.all([
+  // Mark the visit FIRST and keep the previous mark: everything the member has
+  // not seen is measured against when they were last here, not against now.
+  const lastSeen = await markFamilySeen(familyId);
+
+  const [graph, home, memoryList, interviews, joinCode, activity] = await Promise.all([
     getFamilyGraph(familyId),
     getFamilyHome(familyId),
     listMemories(familyId, { limit: 24 }),
@@ -38,6 +42,7 @@ export default async function FamilyHomePage() {
     // Only an admin can be shown the code, and only an admin's page asks: the
     // RPC refuses anyone else, so asking for everyone would be a wasted call.
     can(membership, 'administer') ? getJoinCode(familyId) : Promise.resolve(null),
+    getFamilyActivity(familyId, { since: lastSeen, limit: 12 }),
   ]);
 
   const index = buildFamilyIndex(graph);
@@ -139,6 +144,17 @@ export default async function FamilyHomePage() {
     src: portraitOf(person),
   }));
 
+  const news = activity
+    .filter((entry) => entry.isNew)
+    .slice(0, 6)
+    .map((entry) => ({
+      id: entry.id,
+      action: entry.action,
+      actorName: entry.actor_name,
+      when: relativeTime(entry.created_at, membership.family.default_locale),
+      href: entry.href,
+    }));
+
   const voices: VoiceEntry[] = interviews
     .filter((interview) => interview.subject)
     .slice(0, 4)
@@ -176,6 +192,7 @@ export default async function FamilyHomePage() {
       wall={wall}
       gallery={gallery}
       voices={voices}
+      news={news}
       interview={{
         href: home.resumableInterview ? `/interview/${home.resumableInterview.id}` : '/interview',
         label: home.resumableInterview ? 'Ярилцлагаа үргэлжлүүлэх' : 'Ярилцлага эхлүүлэх',
