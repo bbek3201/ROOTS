@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { MEDIA_BUCKET } from './constants';
+import { fetchWithRetry, PermanentError, retry } from './retry';
 
 export type UploadScope = 'people' | 'memories' | 'photos' | 'videos' | 'audio' | 'documents' | 'interviews';
 
@@ -24,6 +25,8 @@ export interface UploadOptions {
   caption?: string;
   durationSeconds?: number | null;
   onProgress?: (fraction: number) => void;
+  /** Called when a step is being retried, so the form can say so out loud. */
+  onRetry?: (attempt: number) => void;
 }
 
 /**
@@ -37,79 +40,116 @@ export interface UploadOptions {
  *
  * If step 3 fails the object is left in storage rather than deleted: an
  * orphaned file can be reclaimed later, but a deleted family video cannot.
+ *
+ * Every step retries on a dropped connection and on none of the refusals. This
+ * is not polish: ROOTS is used from a phone on a rural connection by someone
+ * holding a box of their grandmother's photographs, and a four-second dropout
+ * that makes them start again is how the box stays in the box.
+ *
+ * Step 3 matters most. By then the bytes are already in storage, and giving up
+ * there leaves a photograph uploaded but invisible — the worst outcome
+ * available, because the family has no way to see it and no way to retry it.
  */
 export async function uploadToArchive(options: UploadOptions): Promise<UploadResult> {
   const mimeType = options.file instanceof File ? options.file.type : (options.file.type || 'application/octet-stream');
 
-  const prepareResponse = await fetch('/api/media/prepare', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      filename: options.filename,
-      mimeType,
-      sizeBytes: options.file.size,
-      scope: options.scope,
-      scopeId: options.scopeId ?? null,
-    }),
-  });
+  const notifyRetry = options.onRetry ? (attempt: number) => options.onRetry?.(attempt) : undefined;
 
-  if (!prepareResponse.ok) {
-    const body = await prepareResponse.json().catch(() => null);
-    throw new Error(body?.error ?? 'Байршуулах бэлтгэл амжилтгүй боллоо.');
-  }
-
-  const prepared = (await prepareResponse.json()) as {
+  const prepared = (await fetchWithRetry(
+    '/api/media/prepare',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        filename: options.filename,
+        mimeType,
+        sizeBytes: options.file.size,
+        scope: options.scope,
+        scopeId: options.scopeId ?? null,
+      }),
+    },
+    'Байршуулах бэлтгэл амжилтгүй боллоо.',
+    { onRetry: notifyRetry },
+  )) as {
     bucket: string; path: string; token: string; kind: UploadResult['kind']; familyId: string;
   };
 
   options.onProgress?.(0.1);
 
   const supabase = createClient();
-  const { error: uploadError } = await supabase.storage
-    .from(prepared.bucket || MEDIA_BUCKET)
-    .uploadToSignedUrl(prepared.path, prepared.token, options.file, {
-      contentType: mimeType,
-      // Originals are written once. Never overwrite.
-      upsert: false,
-    });
+  await retry(async () => {
+    const { error: uploadError } = await supabase.storage
+      .from(prepared.bucket || MEDIA_BUCKET)
+      .uploadToSignedUrl(prepared.path, prepared.token, options.file, {
+        contentType: mimeType,
+        // Originals are written once. Never overwrite.
+        upsert: false,
+      });
 
-  if (uploadError) throw new Error('Файл байршуулахад алдаа гарлаа.');
+    if (!uploadError) return;
+
+    // A retry after a connection that dropped AFTER the bytes landed comes back
+    // as a duplicate. The file is there; that is what we were trying to achieve.
+    if (isAlreadyUploaded(uploadError)) return;
+
+    // The signed URL is minted per path and expires. Once it is gone, retrying
+    // cannot help — the caller has to start again with a fresh token.
+    if (isExpiredToken(uploadError)) {
+      throw new PermanentError('Байршуулах хугацаа дууслаа. Дахин оролдоно уу.');
+    }
+
+    throw new Error('Файл байршуулахад алдаа гарлаа.');
+  }, { onRetry: notifyRetry });
 
   options.onProgress?.(0.85);
 
   const dimensions = prepared.kind === 'photo' ? await readImageSize(options.file) : null;
 
-  const registerResponse = await fetch('/api/media/register', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      familyId: prepared.familyId,
-      path: prepared.path,
-      kind: prepared.kind,
-      mimeType,
-      sizeBytes: options.file.size,
-      originalFilename: options.filename,
-      caption: options.caption ?? undefined,
-      durationSeconds: options.durationSeconds ?? undefined,
-      width: dimensions?.width ?? undefined,
-      height: dimensions?.height ?? undefined,
-      memoryId: options.memoryId ?? undefined,
-      personId: options.personId ?? undefined,
-      coupleId: options.coupleId ?? undefined,
-      interviewId: options.interviewId ?? undefined,
-      speakerPersonId: options.speakerPersonId ?? undefined,
-    }),
-  });
+  // More attempts here than anywhere else: the bytes are already in storage, so
+  // the only thing standing between the family and their photograph is this
+  // one small request.
+  const registered = (await fetchWithRetry(
+    '/api/media/register',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        familyId: prepared.familyId,
+        path: prepared.path,
+        kind: prepared.kind,
+        mimeType,
+        sizeBytes: options.file.size,
+        originalFilename: options.filename,
+        caption: options.caption ?? undefined,
+        durationSeconds: options.durationSeconds ?? undefined,
+        width: dimensions?.width ?? undefined,
+        height: dimensions?.height ?? undefined,
+        memoryId: options.memoryId ?? undefined,
+        personId: options.personId ?? undefined,
+        coupleId: options.coupleId ?? undefined,
+        interviewId: options.interviewId ?? undefined,
+        speakerPersonId: options.speakerPersonId ?? undefined,
+      }),
+    },
+    'Файлыг бүртгэхэд алдаа гарлаа.',
+    { attempts: 6, onRetry: notifyRetry },
+  )) as { id: string };
 
-  if (!registerResponse.ok) {
-    const body = await registerResponse.json().catch(() => null);
-    throw new Error(body?.error ?? 'Файлыг бүртгэхэд алдаа гарлаа.');
-  }
-
-  const { id } = (await registerResponse.json()) as { id: string };
   options.onProgress?.(1);
 
-  return { mediaId: id, kind: prepared.kind, path: prepared.path };
+  return { mediaId: registered.id, kind: prepared.kind, path: prepared.path };
+}
+
+/** Storage says the object is already there — an earlier attempt got through. */
+function isAlreadyUploaded(error: { message?: string; statusCode?: string } | null): boolean {
+  const message = (error?.message ?? '').toLowerCase();
+  return error?.statusCode === '409' || message.includes('already exists') || message.includes('duplicate');
+}
+
+/** The one-shot upload token has expired; a new one must be minted. */
+function isExpiredToken(error: { message?: string } | null): boolean {
+  const message = (error?.message ?? '').toLowerCase();
+  return message.includes('expired') || message.includes('invalid signature') || message.includes('jwt');
 }
 
 /** Read pixel dimensions locally so the grid can reserve the right space. */

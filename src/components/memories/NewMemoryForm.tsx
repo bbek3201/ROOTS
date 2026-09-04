@@ -22,6 +22,12 @@ import type { MemoryType } from '@/types/database';
  * The memory row is created BEFORE the uploads so each file can be attached to
  * it directly; if an upload then fails, the memory still exists with whatever
  * did succeed rather than everything being lost.
+ *
+ * That promise is kept file by file. A phone on a rural connection uploading
+ * eleven scanned prints will drop one of them, and the answer to that is not to
+ * discard the ten that arrived: the failures are kept in the picker, the
+ * memory's id is remembered, and pressing the button again retries only what is
+ * left — into the same memory, never a second copy of it.
  */
 
 const TYPES: Array<{ value: MemoryType; label: string }> = [
@@ -62,6 +68,9 @@ export function NewMemoryForm({
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Set once the memory exists. Its presence is what turns a second press of
+  // the button into "retry the files that failed" rather than "save again".
+  const [memoryId, setMemoryId] = useState<string | null>(null);
 
   // Files usually tell us what kind of memory this is; don't make people say it.
   useEffect(() => {
@@ -84,68 +93,101 @@ export function NewMemoryForm({
     setSaving(true);
     setError(null);
 
-    try {
-      const supabase = createClient();
-      const { data: profile } = await supabase.auth.getUser();
-      const userId = profile.user?.id;
-      if (!userId) throw new Error('auth');
+    let id = memoryId;
 
-      const { data: profileRow } = await supabase
-        .from('profiles').select('display_name').eq('id', userId).maybeSingle();
+    // ---- The memory itself, once ------------------------------------------
+    if (!id) {
+      try {
+        const supabase = createClient();
+        const { data: profile } = await supabase.auth.getUser();
+        const userId = profile.user?.id;
+        if (!userId) throw new Error('auth');
 
-      setProgress('Дурсамжийг үүсгэж байна…');
+        const { data: profileRow } = await supabase
+          .from('profiles').select('display_name').eq('id', userId).maybeSingle();
 
-      const { data: memory, error: memoryError } = await supabase
-        .from('memories')
-        .insert({
-          family_id: familyId,
-          type,
-          title: title.trim(),
-          body: body.trim() || null,
-          memory_date: normaliseDate(dateValue),
-          date_precision: datePrecision(dateValue),
-          couple_id: presetCoupleId,
-          contributor_id: userId,
-          contributor_name: profileRow?.display_name ?? 'Гэр бүлийн гишүүн',
-        })
-        .select('id')
-        .single();
+        setProgress('Дурсамжийг үүсгэж байна…');
 
-      if (memoryError || !memory) throw new Error(memoryError?.message ?? 'memory');
-
-      if (taggedIds.length > 0) {
-        await supabase.from('memory_people').insert(
-          taggedIds.map((personId) => ({
+        const { data: memory, error: memoryError } = await supabase
+          .from('memories')
+          .insert({
             family_id: familyId,
-            memory_id: memory.id,
-            person_id: personId,
-            role: 'subject',
-            created_by: userId,
-          })),
-        );
-      }
+            type,
+            title: title.trim(),
+            body: body.trim() || null,
+            memory_date: normaliseDate(dateValue),
+            date_precision: datePrecision(dateValue),
+            couple_id: presetCoupleId,
+            contributor_id: userId,
+            contributor_name: profileRow?.display_name ?? 'Гэр бүлийн гишүүн',
+          })
+          .select('id')
+          .single();
 
-      for (const [position, file] of files.entries()) {
-        setProgress(`Файл байршуулж байна (${position + 1}/${files.length})…`);
+        if (memoryError || !memory) throw new Error(memoryError?.message ?? 'memory');
+
+        if (taggedIds.length > 0) {
+          await supabase.from('memory_people').insert(
+            taggedIds.map((personId) => ({
+              family_id: familyId,
+              memory_id: memory.id,
+              person_id: personId,
+              role: 'subject',
+              created_by: userId,
+            })),
+          );
+        }
+
+        id = memory.id;
+        setMemoryId(id);
+      } catch (caught) {
+        setError(
+          caught instanceof Error && caught.message.includes('permission')
+            ? 'Танд дурсамж нэмэх эрх байхгүй байна.'
+            : 'Хадгалахад алдаа гарлаа. Оруулсан зүйл тань хадгалагдаагүй байна.',
+        );
+        setSaving(false);
+        setProgress(null);
+        return;
+      }
+    }
+
+    // ---- The files, one at a time, each on its own ------------------------
+    // A failure here is never fatal: the memory exists, and so does every file
+    // that did land. Only the ones that did not are kept back.
+    const failed: File[] = [];
+
+    for (const [position, file] of files.entries()) {
+      setProgress(`Файл байршуулж байна (${position + 1}/${files.length})…`);
+      try {
         await uploadToArchive({
           file,
           filename: file.name,
           scope: 'memories',
-          scopeId: memory.id,
-          memoryId: memory.id,
+          scopeId: id,
+          memoryId: id,
+          onRetry: () => setProgress(`${file.name} — сүлжээ саатлаа, дахин оролдож байна…`),
         });
+      } catch {
+        failed.push(file);
       }
-
-      router.push(`/memories/${memory.id}`);
-    } catch (caught) {
-      setError(
-        caught instanceof Error && caught.message.includes('permission')
-          ? 'Танд дурсамж нэмэх эрх байхгүй байна.'
-          : 'Хадгалахад алдаа гарлаа. Оруулсан зүйл тань хадгалагдаагүй байж магадгүй.',
-      );
-      setSaving(false);
-      setProgress(null);
     }
+
+    if (failed.length === 0) {
+      router.push(`/memories/${id}`);
+      return;
+    }
+
+    // Leave exactly the failures in the picker, so pressing the button again
+    // retries those and nothing else.
+    setFiles(failed);
+    setError(
+      failed.length === files.length
+        ? 'Файл байршуулж чадсангүй. Дурсамж хадгалагдсан — холболтоо шалгаад дахин оролдоно уу.'
+        : `${files.length - failed.length} файл хадгалагдлаа. ${failed.length} файл байршсангүй — дахин оролдоно уу.`,
+    );
+    setSaving(false);
+    setProgress(null);
   };
 
   return (
@@ -257,8 +299,20 @@ export function NewMemoryForm({
       ) : null}
 
       <Button size="lg" fullWidth onClick={submit} loading={saving} disabled={title.trim().length === 0}>
-        Архивт хадгалах
+        {memoryId ? 'Үлдсэн файлыг дахин оруулах' : 'Архивт хадгалах'}
       </Button>
+
+      {/* The memory is already saved by the time this appears. Nobody should be
+          trapped on this form by a file that will not upload. */}
+      {memoryId ? (
+        <button
+          type="button"
+          onClick={() => router.push(`/memories/${memoryId}`)}
+          className="w-full py-2 text-sm text-muted underline"
+        >
+          Файлгүйгээр дурсамжаа нээх
+        </button>
+      ) : null}
     </div>
   );
 }
