@@ -25,7 +25,7 @@ export function News({ entries }: { entries: NewsEntry[] }) {
 
   return (
     <section className="ed-band-sage py-16 lg:py-20">
-      <div className="ed-shell">
+      <div className="rt-gutters">
         <header className="flex flex-wrap items-baseline justify-between gap-4">
           <p className="ed-eyebrow">Таныг байхгүйд</p>
           <p className="text-[0.85rem] text-[color-mix(in_srgb,#183b32_55%,transparent)]">

@@ -129,7 +129,7 @@ export default async function TimelinePage() {
 
   return (
     <main id="main">
-      <header className="ed-shell pt-16 pb-14 lg:pt-24 lg:pb-20">
+      <header className="rt-gutters pt-16 pb-14 lg:pt-24 lg:pb-20">
         <p className="ed-eyebrow">Timeline</p>
         <h1 className="ed-display ed-display-xl mt-7 max-w-[16ch]">
           Танай гэр бүлийн он цагийн хэлхээ.
@@ -144,7 +144,7 @@ export default async function TimelinePage() {
       {sorted.length > 0 ? (
         <FamilyChronicle entries={sorted} />
       ) : (
-        <section className="ed-shell pb-24">
+        <section className="rt-gutters pb-24">
           <div className="ed-band-sage rounded-[32px] px-8 py-16 text-center sm:px-16 sm:py-24">
             <h2 className="ed-display ed-display-lg">Хэлхээ хоосон байна.</h2>
             <p className="ed-lead mx-auto mt-6">
@@ -157,7 +157,7 @@ export default async function TimelinePage() {
         </section>
       )}
 
-      <footer className="ed-shell ed-hair py-12">
+      <footer className="rt-gutters ed-hair py-12">
         <p className="ed-eyebrow">Roots · {membership.family.name}</p>
       </footer>
     </main>

@@ -8,6 +8,7 @@ import {
   PersonIcon,
   PlusIcon,
   SearchIcon,
+  SettingsIcon,
   TreeIcon,
 } from '@/components/icons';
 
@@ -104,6 +105,22 @@ export const TAB_BAR: readonly NavItem[] = [
   ...DESTINATIONS.filter((item) => !NOT_IN_TAB_BAR.has(item.href)),
   UTILITIES[1] as NavItem,
 ];
+
+/**
+ * The foot of the sidebar.
+ *
+ * The desk layout has room to show what the tab bar never could: the things
+ * that are about YOUR account rather than about the family's archive. They sit
+ * below a hairline, in the same map as everything else so a route can still
+ * only be described in one place.
+ *
+ * Search is deliberately absent — on the desk it is the field in the top bar,
+ * reachable from every page without a trip to the sidebar at all.
+ */
+export const SIDEBAR_SECONDARY: readonly NavItem[] = [
+  UTILITIES[1] as NavItem,
+  { href: '/settings/family', label: 'Тохиргоо', short: 'Тохиргоо', Icon: SettingsIcon },
+] as const;
 
 /** Every route that belongs to an item. */
 function routesOf(item: NavItem): string[] {

@@ -96,7 +96,7 @@ export function CoupleHome({
   return (
     <main id="main">
       {/* ================= Hero ============================================ */}
-      <section className="ed-shell pt-14 pb-12 text-center sm:pt-20">
+      <section className="rt-gutters pt-14 pb-12 text-center sm:pt-20">
         <p aria-hidden="true" className="text-2xl">💖 ✨</p>
 
         <h1 className="ed-display ed-display-xl mx-auto mt-6 max-w-[16ch] text-balance">
@@ -139,7 +139,7 @@ export function CoupleHome({
 
       {/* Waiting for the other half. Shown until they accept and never after. */}
       {!partnerJoined ? (
-        <section className="ed-shell pb-12">
+        <section className="rt-gutters pb-12">
           <div className="mx-auto max-w-lg">
             <InvitePartner spaceId={spaceId} partnerName={names[1]} />
           </div>
@@ -151,7 +151,7 @@ export function CoupleHome({
           photograph is the product and a wall of cards about photographs is
           not the same thing as the photographs. */}
       {lead ? (
-        <section className="ed-shell pb-14">
+        <section className="rt-gutters pb-14">
           <div className="grid gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-stretch">
             <Link href="/us/memories" className="block lg:h-full">
               <Plate
@@ -181,12 +181,12 @@ export function CoupleHome({
         </section>
       ) : null}
 
-      <div className="ed-shell">
+      <div className="rt-gutters">
         <hr className="border-t border-[color-mix(in_srgb,#183b32_12%,transparent)]" />
       </div>
 
       {/* ================= The rooms ======================================= */}
-      <section className="ed-shell py-14 lg:py-20">
+      <section className="rt-gutters py-14 lg:py-20">
         <h2 className="ed-eyebrow">
           Our shared heartbeat <span aria-hidden="true">❤️</span>
         </h2>
@@ -244,7 +244,7 @@ export function CoupleHome({
         </ul>
       </section>
 
-      <div className="ed-shell">
+      <div className="rt-gutters">
         <hr className="border-t border-[color-mix(in_srgb,#183b32_12%,transparent)]" />
       </div>
 
@@ -252,7 +252,7 @@ export function CoupleHome({
       {/* The one place the private space points outward. It is also the truest
           sentence in the product: this relationship is a row in the family
           tree, and the children hang off the same couple. */}
-      <section className="ed-shell py-16 lg:py-24">
+      <section className="rt-gutters py-16 lg:py-24">
         <div className="ed-band-sage rounded-[32px] px-7 py-14 text-center sm:px-14">
           <p aria-hidden="true" className="text-2xl">🌳</p>
           <h2 className="ed-display ed-display-md mx-auto mt-5 max-w-[24ch] text-balance">
@@ -264,7 +264,7 @@ export function CoupleHome({
         </div>
       </section>
 
-      <section className="ed-shell pb-20">
+      <section className="rt-gutters pb-20">
         <p className="mx-auto max-w-[40ch] text-center text-sm leading-relaxed text-[color-mix(in_srgb,#183b32_50%,transparent)]">
           Энэ хуудсыг зөвхөн та хоёр харна. Гэр бүлийн бусад гишүүд ч, архивын админ ч
           эндэхийг харахгүй.

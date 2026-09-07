@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 
 /**
@@ -15,6 +15,23 @@ import './globals.css';
 const sans = Inter({
   subsets: ['latin', 'cyrillic'],
   variable: '--font-sans-loaded',
+  display: 'swap',
+});
+
+/**
+ * The second voice: a serif, for the things a family reads out loud.
+ *
+ * The archive is a printed album, and a printed album sets its names, its
+ * headlines and its wordmark in a serif — the sans that carries the metadata
+ * cannot also carry "Танай гэр бүл. Үүрд." without the page turning into a
+ * dashboard. Playfair is chosen over the warmer text serifs for one practical
+ * reason as much as an aesthetic one: it ships a Cyrillic subset, and a display
+ * face that silently falls back for Cyrillic would undo the typography on every
+ * screen of a product written entirely in Mongolian.
+ */
+const serif = Playfair_Display({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-serif-loaded',
   display: 'swap',
 });
 
@@ -40,7 +57,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="mn" className={sans.variable}>
+    <html lang="mn" className={`${sans.variable} ${serif.variable}`}>
       <body>
         <a
           href="#main"

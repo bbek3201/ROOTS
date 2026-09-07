@@ -28,7 +28,7 @@ export function FamilyChronicle({ entries }: { entries: ChronicleEntry[] }) {
     <div>
       {years.map(([year, yearEntries]) => (
         <section key={year} className="ed-hair">
-          <div className="ed-shell grid grid-cols-1 gap-8 py-14 lg:grid-cols-[9rem_minmax(0,1fr)] lg:gap-16 lg:py-20">
+          <div className="rt-gutters grid grid-cols-1 gap-8 py-14 lg:grid-cols-[9rem_minmax(0,1fr)] lg:gap-16 lg:py-20">
             <p className="ed-display self-start text-[2.4rem] leading-none tracking-[-0.045em] text-[color-mix(in_srgb,#183b32_75%,transparent)] lg:sticky lg:top-28 lg:text-[3.1rem]">
               {year}
             </p>

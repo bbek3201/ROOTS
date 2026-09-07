@@ -4,6 +4,9 @@ import { can } from '@/lib/auth/session';
 import { getFamilyGraph, getMediaPaths } from '@/lib/data/family';
 import { getCoupleArchive } from '@/lib/data/couples';
 import { getSignedUrls } from '@/lib/media/storage';
+import { PagePlate } from '@/components/nav/AppShell';
+import { Rail, RailCard, RailCta, RailRow } from '@/components/nav/Rail';
+import { BookIcon, ImageIcon, MicIcon } from '@/components/icons';
 import { FamilyCoverButton } from '@/components/family/FamilyCoverButton';
 import { FamilyStoryEditor } from '@/components/family/FamilyStoryEditor';
 import { FamilyTreeScreen } from '@/components/tree/FamilyTreeScreen';
@@ -83,6 +86,15 @@ export default async function FamilyTreePage() {
   const generations = new Set(graph.people.map((person) => person.generation ?? 0)).size;
   const span = lifeSpanOfFamily(graph.people);
 
+  // One line describing the archive, said the same way wherever it appears.
+  const familyMeta = [
+    `${generations || membership.family.visible_generations} үе`,
+    `${graph.people.length} хүн`,
+    span,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   // ---- The lineage, read outward from whoever is looking -------------------
   // A member who has not been linked to a person in the tree still gets a view;
   // theirs runs oldest-first from the roots, because there is no "you" to walk
@@ -114,10 +126,14 @@ export default async function FamilyTreePage() {
   }));
 
   return (
-    <main id="main">
-      {/* ================= The family, in one photograph =================== */}
-      <section className="relative">
-        <div className="relative isolate flex min-h-[clamp(22rem,62svh,38rem)] items-end overflow-hidden">
+    <>
+      <PagePlate>
+        {/* =============== The family, in one photograph =================== */}
+        {/* The tree below is a diagram OF this. A map of relationships is a
+            beautiful thing to navigate and a cold thing to arrive at; the
+            picture of everyone at the reunion, with the family's name over it,
+            says what the archive is before a single card is read. */}
+        <section className="relative isolate flex min-h-[clamp(16rem,42svh,26rem)] items-end overflow-hidden">
           {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
             <img
@@ -137,42 +153,30 @@ export default async function FamilyTreePage() {
             aria-hidden="true"
             className={
               coverUrl
-                ? 'absolute inset-0 bg-gradient-to-t from-[rgb(10_26_21/0.86)] via-[rgb(10_26_21/0.4)] to-transparent'
+                ? 'absolute inset-0 bg-gradient-to-t from-[rgb(10_26_21/0.82)] via-[rgb(10_26_21/0.34)] to-transparent'
                 : 'absolute inset-0 bg-gradient-to-t from-[rgb(255_252_248/0.92)] to-transparent'
             }
           />
 
-          <div className="ed-shell relative w-full pb-12 pt-24 sm:pb-16">
+          <div className="rt-gutters relative w-full pt-20 pb-8">
             <p
               className={
                 coverUrl
-                  ? 'text-[0.7rem] font-medium uppercase tracking-[0.32em] text-[rgb(251_249_244/0.72)]'
+                  ? 'text-[0.68rem] font-medium uppercase tracking-[0.3em] text-[rgb(251_249_244/0.74)]'
                   : 'ed-eyebrow'
               }
             >
-              {[
-                `${graph.people.length} хүн`,
-                `${generations || membership.family.visible_generations} үе`,
-                span,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+              {familyMeta}
             </p>
 
             <h1
-              className={`ed-display ed-display-xl mt-5 max-w-[15ch] ${coverUrl ? 'text-[#fbf9f4]' : ''}`}
+              className={`ed-display mt-3 text-[clamp(1.9rem,3vw,2.9rem)] ${coverUrl ? 'text-[#fbf9f4]' : ''}`}
             >
               {membership.family.name}
             </h1>
 
-            {story ? (
-              <p className={`ed-lead mt-6 ${coverUrl ? 'text-[rgb(251_249_244/0.82)]' : ''}`}>
-                {firstLine(story)}
-              </p>
-            ) : null}
-
             {canCurate || canAdminister ? (
-              <div className="mt-8 flex flex-wrap items-start gap-2">
+              <div className="mt-6 flex flex-wrap items-start gap-2">
                 {canCurate ? (
                   <FamilyCoverButton
                     familyId={familyId}
@@ -189,97 +193,83 @@ export default async function FamilyTreePage() {
               </div>
             ) : null}
           </div>
-        </div>
-      </section>
-
-      {/* ================= The family's own words ========================== */}
-      {story || canAdminister ? (
-        <section className="ed-band-cream py-16 lg:py-24">
-          <div className="ed-shell">
-            <p className="ed-eyebrow">Гэр бүлийн түүх</p>
-
-            {story ? (
-              <>
-                {/* `pre-line` keeps the paragraphs someone typed. A family
-                    history is written in breaths, not in one block. */}
-                <div className="mt-7 max-w-[62ch] whitespace-pre-line text-[1.08rem] leading-[1.75] text-[color-mix(in_srgb,#183b32_82%,transparent)]">
-                  {story}
-                </div>
-                <div className="mt-8 flex flex-wrap items-center gap-4">
-                  {canAdminister ? (
-                    <FamilyStoryEditor
-                      familyId={familyId}
-                      name={membership.family.name}
-                      story={story}
-                      variant="onPaper"
-                      label="Түүхийг засах"
-                    />
-                  ) : null}
-                  <Link
-                    href="/family/story"
-                    className="text-[0.9rem] text-[#183b32] underline decoration-[color-mix(in_srgb,#183b32_25%,transparent)] underline-offset-8 transition-colors hover:decoration-[#183b32]"
-                  >
-                    Бүтнээр нь унших
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <div className="mt-7 max-w-[52ch]">
-                <p className="ed-display ed-display-md">
-                  Танайхны түүхийг хэн ч бичээгүй байна.
-                </p>
-                <p className="ed-lead mt-5">
-                  Хаанаас гаралтай, хэнээс эхэлсэн, юугаараа онцлог вэ — хэдхэн өгүүлбэр
-                  ч гэсэн үр хойчид үлдэнэ.
-                </p>
-                <div className="mt-7">
-                  <FamilyStoryEditor
-                    familyId={familyId}
-                    name={membership.family.name}
-                    story={story}
-                    variant="onPaper"
-                    label="Түүхийг бичих"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
         </section>
-      ) : null}
 
-      {/* ================= The lineage ===================================== */}
-      {/* The one dark surface in ROOTS, and the exception is deliberate: this
-          is the only screen you look INTO rather than read, and a dark ground
-          is what lets seven generations of small portraits sit in one field
-          without the page glaring between them. */}
-      <HeritageTree
-        levels={levels}
-        deeper={deeperCount(index, bands)}
-        canEdit={canCurate}
-        hasStory={Boolean(story)}
-      >
-        <FamilyTreeScreen
-          graph={graph}
-          focusPersonId={membership.person_id}
-          locale={membership.family.default_locale}
-          visibleGenerations={membership.family.visible_generations}
-          photoUrls={photoUrls}
-          coupleArchive={coupleArchive}
-        />
-      </HeritageTree>
+        {/* =============== The lineage ==================================== */}
+        <HeritageTree
+          levels={levels}
+          deeper={deeperCount(index, bands)}
+          canEdit={canCurate}
+          hasStory={Boolean(story)}
+          meta={familyMeta}
+        >
+          <FamilyTreeScreen
+            graph={graph}
+            focusPersonId={membership.person_id}
+            locale={membership.family.default_locale}
+            visibleGenerations={membership.family.visible_generations}
+            photoUrls={photoUrls}
+            coupleArchive={coupleArchive}
+          />
+        </HeritageTree>
+      </PagePlate>
 
-      <section className="ed-shell py-12">
-        <p>
-          <Link
-            href="/timeline"
-            className="text-[0.95rem] text-[#183b32] underline decoration-[color-mix(in_srgb,#183b32_25%,transparent)] underline-offset-8 transition-colors hover:decoration-[#183b32]"
-          >
-            Он цагийн хэлхээгээр үзэх
-          </Link>
-        </p>
-      </section>
+      {/* ================= The rail ======================================= */}
+      {/* On the tree, the aside is the family's own words about itself. The
+          diagram says how everyone is connected; only the story says why any
+          of it matters, and buried under a canvas nobody scrolls to it. */}
+      <Rail>
+        <RailCard
+          title="Гэр бүлийн түүх"
+          href={story ? '/family/story' : undefined}
+          linkLabel="Бүтнээр"
+        >
+          <div className="px-5 pb-5">
+            {story ? (
+              <p className="whitespace-pre-line text-[0.95rem] leading-relaxed text-ink-soft">
+                {firstLine(story)}
+              </p>
+            ) : (
+              <p className="text-[0.95rem] leading-relaxed text-ink-soft">
+                Танайхны түүхийг хэн ч бичээгүй байна. Хаанаас гаралтай, хэнээс
+                эхэлсэн — хэдхэн өгүүлбэр ч гэсэн үр хойчид үлдэнэ.
+              </p>
+            )}
 
-    </main>
+            {canAdminister ? (
+              <div className="mt-5">
+                <FamilyStoryEditor
+                  familyId={familyId}
+                  name={membership.family.name}
+                  story={story}
+                  variant="onPaper"
+                  label={story ? 'Түүхийг засах' : 'Түүхийг бичих'}
+                />
+              </div>
+            ) : null}
+          </div>
+        </RailCard>
+
+        <div className="rt-rail-card overflow-hidden">
+          <RailRow href="/timeline" icon={BookIcon} title="Он цагийн хэлхээ" note={familyMeta} />
+          <RailRow
+            href="/interview"
+            icon={MicIcon}
+            title="Дуу хоолойн архив"
+            note="Ахмадуудынхаа түүхийг сонс"
+          />
+          <RailRow href="/memories" icon={ImageIcon} title="Зураг ба бичлэг" note="Бүх дурсамж" />
+        </div>
+
+        {canCurate ? (
+          <RailCta href="/family/add-person">
+            Дутуу хүнээ
+            <br />
+            модондоо нэм
+          </RailCta>
+        ) : null}
+      </Rail>
+    </>
   );
 }
 

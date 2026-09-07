@@ -22,7 +22,7 @@ export interface CoupleCardProps {
  */
 export function CoupleCard({ names, together, counts, waiting }: CoupleCardProps) {
   return (
-    <section className="ed-shell py-14 lg:py-20">
+    <section className="rt-gutters py-14 lg:py-20">
       <Link
         href="/us"
         className="ed-band-cream group block rounded-[32px] px-7 py-10 sm:px-12 sm:py-14"

@@ -24,13 +24,17 @@
 @theme {
   /* The loaded faces come from next/font (see app/layout.tsx). The stacks
      behind them are what renders if a font file never arrives. */
-  /* One face, two roles. The archive used to set headlines in a serif, which
-     read as a literary quarterly; the product is a contemporary album people
-     send to their parents, so headlines are the sans set heavy and tight and
-     `--font-display` now points at it. Kept as a separate token so the two
-     roles stay nameable — and so a serif could be reinstated in one line. */
+  /* Two faces, two jobs. The serif carries everything a family reads out loud
+     — the wordmark, names, headlines, the pull-quote in the sidebar — and the
+     sans carries everything that should recede: labels, dates, counts, form
+     fields, buttons. This is the split a printed album has, and ROOTS is a
+     printed album before it is software.
+
+     `--font-display` is the seam between them. Every heading in the product
+     goes through it, so the two roles can be re-cast from this one line. */
   --font-sans: var(--font-sans-loaded), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Roboto, Arial, sans-serif;
-  --font-display: var(--font-sans);
+  --font-serif: var(--font-serif-loaded), 'Iowan Old Style', 'Palatino Linotype', 'Noto Serif', Georgia, serif;
+  --font-display: var(--font-serif);
 
   /* Warm neutrals — the album's paper. `parchment` is the page, `surface` the
      lighter plane that sits on it, and `ink` is a deep green rather than a grey:
@@ -133,8 +137,10 @@ body {
   h1, h2, h3, .font-display {
     font-family: var(--font-display);
     font-weight: 600;
-    letter-spacing: -0.034em;
-    line-height: 1.12;
+    /* A serif needs far less negative tracking than the sans this rule was
+       written for — at -0.034em Playfair's serifs start colliding. */
+    letter-spacing: -0.012em;
+    line-height: 1.14;
   }
 }
 
@@ -269,13 +275,20 @@ body {
 /* ===========================================================================
    The heritage surface — the family tree, and only the family tree
    ---------------------------------------------------------------------------
-   Every other page in ROOTS is warm paper. This one is not, and the exception
-   is deliberate rather than a second theme creeping in: the tree is the only
-   screen you look INTO rather than read, and a dark ground is what lets seven
-   generations of small portraits sit in one field without the page glaring
-   between them. Photographs gain contrast, gold reads as gold instead of as
-   mustard, and the connecting lines stop competing with the paper's own
-   texture.
+   This was a dark room for a while, and the argument for it was a real one:
+   a dark ground lets many small portraits sit in one field without the page
+   glaring between them. What it cost was larger. The tree is the screen people
+   arrive at from the home page and leave for a person's page, and a black
+   rectangle between two sheets of warm paper reads as a different product
+   rather than as the centre of this one. It also broke the album: everywhere
+   else ROOTS is a printed object, and you cannot print this.
+
+   So the room has the lights on. The variables below are unchanged in NAME —
+   every rule in this file and every class in the tree components still reads
+   `--hx-ground`, `--hx-gold`, `--hx-hair` — and changed in VALUE, which is the
+   whole reason they were variables. Gold stays the accent, but it is now the
+   warm brass of the rest of the palette rather than the metallic yellow a dark
+   field needed to stay visible.
 
    Scoped to `.heritage` for the same reason `.editorial` is scoped: these are
    fixed, chosen colours, not a themeable palette. They must not follow the OS,
@@ -283,24 +296,24 @@ body {
    =========================================================================== */
 @layer components {
   .heritage {
-    --hx-ground: #0c0d10;
-    --hx-raised: #14161b;
-    --hx-text: #f4f4f5;
-    --hx-muted: color-mix(in srgb, #f4f4f5 58%, transparent);
-    --hx-faint: color-mix(in srgb, #f4f4f5 34%, transparent);
-    --hx-gold: #d4af37;
-    --hx-heart: #ef4444;
-    --hx-hair: color-mix(in srgb, #f4f4f5 14%, transparent);
+    --hx-ground: #fffcf8;
+    --hx-raised: #ffffff;
+    --hx-text: #183b32;
+    --hx-muted: color-mix(in srgb, #183b32 62%, transparent);
+    --hx-faint: color-mix(in srgb, #183b32 44%, transparent);
+    --hx-gold: #b4884a;
+    --hx-heart: #c2643a;
+    --hx-hair: color-mix(in srgb, #183b32 10%, transparent);
 
     position: relative;
     isolation: isolate;
-    color-scheme: dark;
+    color-scheme: light;
     background: var(--hx-ground);
     color: var(--hx-text);
   }
 
-  /* One slow pool of warmth from above, so the ground reads as a lit room
-     rather than as a black rectangle. */
+  /* The same two pools of light as before, now barely there: on paper they are
+     a warmth across the field rather than a glow out of the dark. */
   .heritage::before {
     content: '';
     position: absolute;
@@ -308,8 +321,8 @@ body {
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(58rem 34rem at 50% -8%, color-mix(in srgb, #d4af37 11%, transparent), transparent 66%),
-      radial-gradient(44rem 30rem at 88% 108%, color-mix(in srgb, #ef4444 7%, transparent), transparent 62%);
+      radial-gradient(58rem 34rem at 50% -8%, color-mix(in srgb, #c9a96e 14%, transparent), transparent 66%),
+      radial-gradient(44rem 30rem at 88% 108%, color-mix(in srgb, #afc7b8 22%, transparent), transparent 62%);
   }
 
   .hx-eyebrow {
@@ -321,20 +334,19 @@ body {
     color: var(--hx-gold);
   }
 
-  /* A card in the heritage field: raised a little, edged in the faintest gold,
-     and lit from within on hover. Never a hard border — a bright outline in a
-     dark field is a grid, and this is meant to read as a lineage. */
+  /* A card in the heritage field: a hairline on white, lifting a little under
+     the pointer. Never a heavy border — an outlined grid is a spreadsheet, and
+     this is meant to read as a lineage. */
   .hx-card {
-    background: linear-gradient(160deg, var(--hx-raised), color-mix(in srgb, var(--hx-ground) 82%, var(--hx-raised)));
-    border: 1px solid color-mix(in srgb, var(--hx-gold) 22%, transparent);
+    background: var(--hx-raised);
+    border: 1px solid color-mix(in srgb, #183b32 8%, transparent);
     border-radius: 20px;
     transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
   }
 
   .hx-card:hover {
-    border-color: color-mix(in srgb, var(--hx-gold) 55%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--hx-gold) 12%, transparent),
-                0 18px 40px -24px rgb(0 0 0 / 0.9);
+    border-color: color-mix(in srgb, var(--hx-gold) 45%, transparent);
+    box-shadow: 0 18px 38px -30px rgb(24 59 50 / 0.45);
     transform: translateY(-2px);
   }
 
@@ -346,8 +358,8 @@ body {
     background: linear-gradient(
       to bottom,
       transparent,
-      color-mix(in srgb, var(--hx-gold) 45%, transparent) 30%,
-      color-mix(in srgb, var(--hx-gold) 45%, transparent) 70%,
+      color-mix(in srgb, #183b32 26%, transparent) 30%,
+      color-mix(in srgb, #183b32 26%, transparent) 70%,
       transparent
     );
   }
@@ -359,7 +371,8 @@ body {
     min-height: 2.75rem;
     padding-inline: 1.15rem;
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--hx-gold) 34%, transparent);
+    border: 1px solid color-mix(in srgb, #183b32 14%, transparent);
+    background: color-mix(in srgb, #ffffff 70%, transparent);
     color: var(--hx-text);
     font-size: 0.9rem;
     font-weight: 500;
@@ -367,8 +380,8 @@ body {
   }
 
   .hx-btn:hover {
-    background: color-mix(in srgb, var(--hx-gold) 12%, transparent);
-    border-color: var(--hx-gold);
+    background: #ffffff;
+    border-color: color-mix(in srgb, #183b32 34%, transparent);
   }
 }
 
@@ -455,21 +468,21 @@ body {
      desktop width it lands around 88px, which is the size at which a headline
      stops being a label and starts being the thing you came to read.
 
-     The face is the SANS, set heavy and tight — not the archive's serif. A serif
-     at this scale reads as a literary quarterly; the album wants the confident,
-     contemporary voice of a product people in their twenties would send to their
-     parents. The serif keeps everything below display size. */
+     The face is the SERIF. At this scale it is the difference between a page
+     that reads as an album and a page that reads as a SaaS dashboard, and the
+     album is what ROOTS is. The sans keeps everything that should recede —
+     labels, dates, counts, buttons — so the two never compete. */
   .ed-display {
-    font-family: var(--font-sans);
+    font-family: var(--font-serif);
     font-weight: 600;
-    line-height: 1.03;
-    letter-spacing: -0.042em;
+    line-height: 1.04;
+    letter-spacing: -0.014em;
     text-wrap: balance;
     color: var(--ed-ink);
   }
   .ed-display-xl { font-size: clamp(2.6rem, 4.7vw, 4.35rem); }
   .ed-display-lg { font-size: clamp(2rem, 3.4vw, 3.15rem); line-height: 1.08; }
-  .ed-display-md { font-size: clamp(1.5rem, 2.2vw, 2.1rem); line-height: 1.12; letter-spacing: -0.032em; }
+  .ed-display-md { font-size: clamp(1.5rem, 2.2vw, 2.1rem); line-height: 1.14; letter-spacing: -0.008em; }
 
   .ed-lead {
     font-size: clamp(1.02rem, 1.15vw, 1.2rem);
@@ -546,3 +559,358 @@ body {
 }
 .editorial .photo-frame > span { color: color-mix(in srgb, var(--ed-ink) 30%, transparent); }
 
+
+/* ===========================================================================
+   The desk — sidebar, top bar, panel, rail
+   ---------------------------------------------------------------------------
+   Above this point the system describes PAGES. This section describes the
+   furniture they sit on, and it exists because ROOTS stopped being a phone app
+   with a website bolted on and became a desk you sit down at:
+
+     · a standing sidebar on the left, the wordmark above it and a photograph
+       below it, so the archive always has a horizon in view;
+     · a quiet top bar whose only real content is the search field, because
+       search is the one thing you do from anywhere;
+     · the page itself as a single large plate of paper laid on the desk;
+     · an optional right rail for what the page is NOT about — a couple to look
+       in on, somewhere to go next, one invitation to add something today.
+
+   Everything is prefixed `rt-` and lives in the components layer, so a utility
+   on the element always wins. Below `lg` the sidebar and rail fold away and the
+   phone layout underneath is untouched: this is a wider view of the same
+   product, not a second one.
+   =========================================================================== */
+@layer components {
+
+  /* ---- the frame ------------------------------------------------------- */
+
+  /* Sidebar and content, with the content free to scroll under a fixed rail of
+     navigation. The width is the narrowest at which a label and its icon sit
+     on one line at every string length in Mongolian. */
+  .rt-frame {
+    --rt-sidebar: 264px;
+    --rt-gutter: clamp(0.75rem, 1.4vw, 1.25rem);
+    min-height: 100dvh;
+  }
+
+  @media (min-width: 1024px) {
+    .rt-frame { padding-left: var(--rt-sidebar); }
+  }
+
+  .rt-sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 40;
+    display: none;
+    width: var(--rt-sidebar);
+    flex-direction: column;
+    padding: 1.5rem 0.9rem 0.9rem;
+  }
+
+  @media (min-width: 1024px) {
+    .rt-sidebar { display: flex; }
+    .rt-topbar { gap: 1rem; }
+  }
+
+  /* The wordmark. Wide-tracked serif caps — the one place in the product where
+     letterspacing is doing expressive rather than functional work. */
+  .rt-wordmark {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: 1.55rem;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    color: var(--ed-ink, #183b32);
+  }
+
+  /* ---- navigation ------------------------------------------------------ */
+
+  /* A row rather than a pill: full-width, generously padded, and the active
+     one lit with the sage wash instead of an outline. Nothing in the sidebar
+     has a border — the light does the separating. */
+  .rt-navlink {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-height: 2.9rem;
+    padding-inline: 0.85rem;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    color: color-mix(in srgb, #183b32 68%, transparent);
+    transition: background-color 0.18s ease, color 0.18s ease;
+  }
+
+  .rt-navlink:hover {
+    background: color-mix(in srgb, #f7f2e9 78%, transparent);
+    color: #183b32;
+  }
+
+  .rt-navlink[aria-current='page'] {
+    background: color-mix(in srgb, #afc7b8 30%, #fffcf8);
+    color: #183b32;
+    font-weight: 500;
+  }
+
+  .rt-navlink[aria-current='page'] svg { stroke-width: 1.9; }
+
+  /* ---- the photograph at the foot of the sidebar ----------------------- */
+
+  /* A horizon, and a line of the family's own voice over it. This is the piece
+     that stops the sidebar reading as a control panel: you are not looking at a
+     menu, you are looking out of a window with a menu in front of it. */
+  .rt-vista {
+    position: relative;
+    flex: 1;
+    min-height: 180px;
+    margin-top: 1.25rem;
+    overflow: hidden;
+    border-radius: 20px;
+    background: linear-gradient(
+      168deg,
+      color-mix(in srgb, #afc7b8 55%, #fffcf8),
+      color-mix(in srgb, #c9a96e 22%, #f7f2e9)
+    );
+  }
+
+  .rt-vista img {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+  }
+
+  .rt-vista::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgb(18 34 28 / 0.62), rgb(18 34 28 / 0.06) 58%, transparent);
+  }
+
+  /* The pull-quote. Italic serif, small, and deliberately unattributed — it is
+     the album talking, not a person. */
+  .rt-quote {
+    position: absolute;
+    inset-inline: 1.1rem;
+    bottom: 1.1rem;
+    z-index: 1;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: #f6f2ea;
+  }
+
+  .rt-quote::after {
+    content: '';
+    display: block;
+    width: 2.25rem;
+    margin-top: 0.7rem;
+    border-top: 1px solid color-mix(in srgb, #f6f2ea 55%, transparent);
+  }
+
+  /* ---- the top bar ----------------------------------------------------- */
+
+  /* Sticky, translucent, no shadow and no bottom rule. It carries the search
+     field and two controls; on the desk it should feel like the edge of the
+     paper rather than like a toolbar. */
+  .rt-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.9rem clamp(0.75rem, 2vw, 1.5rem);
+    background: color-mix(in srgb, #fffcf8 78%, transparent);
+    backdrop-filter: blur(18px);
+  }
+
+  .rt-search {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: 100%;
+    min-width: 0;
+    min-height: 2.85rem;
+    padding-inline: 1.05rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, #183b32 9%, transparent);
+    background: color-mix(in srgb, #ffffff 88%, transparent);
+    color: color-mix(in srgb, #183b32 52%, transparent);
+    font-size: 0.92rem;
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+  }
+
+  .rt-search:hover,
+  .rt-search:focus-within {
+    border-color: color-mix(in srgb, #183b32 22%, transparent);
+    background: #ffffff;
+  }
+
+  .rt-search input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #183b32;
+    outline: none;
+    font-size: 0.92rem;
+  }
+
+  .rt-search input::placeholder { color: color-mix(in srgb, #183b32 42%, transparent); }
+
+  /* A round control in the top bar: the bell, the menu button on a phone. */
+  .rt-orb {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.6rem;
+    width: 2.6rem;
+    flex-shrink: 0;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, #183b32 9%, transparent);
+    background: color-mix(in srgb, #ffffff 88%, transparent);
+    color: #183b32;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+  }
+
+  .rt-orb:hover {
+    background: #ffffff;
+    border-color: color-mix(in srgb, #183b32 20%, transparent);
+  }
+
+  /* ---- the plate ------------------------------------------------------- */
+
+  /* The page. One sheet of warm paper with a hairline edge, large radius, and
+     no shadow to speak of — it is lying ON the desk, not floating above it. */
+  .rt-panel {
+    border-radius: 26px;
+    border: 1px solid color-mix(in srgb, #183b32 7%, transparent);
+    background: color-mix(in srgb, #fffcf8 92%, #ffffff);
+    box-shadow: 0 1px 2px rgb(24 59 50 / 0.02), 0 26px 60px -46px rgb(24 59 50 / 0.35);
+  }
+
+  /* ---- the right rail -------------------------------------------------- */
+
+  .rt-rail {
+    display: none;
+    width: 336px;
+    flex-shrink: 0;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  @media (min-width: 1280px) {
+    .rt-rail { display: flex; }
+  }
+
+  .rt-rail-card {
+    border-radius: 22px;
+    border: 1px solid color-mix(in srgb, #183b32 7%, transparent);
+    background: color-mix(in srgb, #fffcf8 94%, #ffffff);
+    box-shadow: 0 1px 2px rgb(24 59 50 / 0.02), 0 20px 44px -40px rgb(24 59 50 / 0.32);
+  }
+
+  /* A row in the rail: an icon in a tinted square, two lines of text, a
+     chevron. Three of them stacked is the whole "where to next" card. */
+  .rt-rail-row {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.9rem 1.1rem;
+    transition: background-color 0.18s ease;
+  }
+
+  .rt-rail-row:hover { background: color-mix(in srgb, #f7f2e9 72%, transparent); }
+  .rt-rail-row + .rt-rail-row { border-top: 1px solid color-mix(in srgb, #183b32 6%, transparent); }
+
+  .rt-rail-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.6rem;
+    width: 2.6rem;
+    flex-shrink: 0;
+    border-radius: 14px;
+    background: color-mix(in srgb, #afc7b8 28%, #fffcf8);
+    color: #183b32;
+  }
+
+  /* The one dark object on the desk. Used exactly once per screen, for the
+     invitation to add something today — the whole product's purpose, stated
+     quietly at the bottom of the rail. */
+  .rt-cta {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 1.15rem 1.25rem;
+    border-radius: 22px;
+    background: linear-gradient(155deg, #204a3e, #142f28);
+    color: #f3efe4;
+    box-shadow: 0 20px 44px -30px rgb(20 47 40 / 0.85);
+    transition: transform 0.2s ease;
+  }
+
+  .rt-cta:hover { transform: translateY(-1px); }
+
+  /* The plate's own gutter.
+     `ed-shell` centres a 1360px measure and adds page margins, which is right
+     for a full-bleed page and wrong inside a plate that already has both. This
+     is the plate-relative equivalent: no max-width, no centring, just the one
+     inset every section on the plate shares. */
+  .rt-gutters {
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 640px) { .rt-gutters { padding-inline: 2.25rem; } }
+  @media (min-width: 1024px) { .rt-gutters { padding-inline: 3rem; } }
+
+  /* ---- small parts shared by the plate and the rail --------------------- */
+
+  /* A segmented control: Tree | List. Two or three short words, one lit. */
+  .rt-segment {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.22rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, #183b32 8%, transparent);
+    background: color-mix(in srgb, #ffffff 88%, transparent);
+  }
+
+  .rt-segment > * {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.1rem;
+    padding-inline: 1.05rem;
+    border-radius: 999px;
+    font-size: 0.86rem;
+    color: color-mix(in srgb, #183b32 62%, transparent);
+    transition: background-color 0.18s ease, color 0.18s ease;
+  }
+
+  .rt-segment > [aria-current='true'],
+  .rt-segment > [data-on='true'] {
+    background: #183b32;
+    color: #f6f2ea;
+    font-weight: 500;
+  }
+
+  /* The quiet pill next to a segmented control: "7 Generations ⌄". */
+  .rt-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.45rem;
+    padding-inline: 1rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, #183b32 9%, transparent);
+    background: color-mix(in srgb, #ffffff 88%, transparent);
+    color: #183b32;
+    font-size: 0.86rem;
+  }
+
+  .rt-chip:hover { border-color: color-mix(in srgb, #183b32 20%, transparent); }
+}

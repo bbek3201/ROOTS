@@ -148,3 +148,76 @@ export const HERITAGE_LEVELS = [
     ],
   },
 ];
+
+/* ---------------------------------------------------------------------------
+   The family home and the desk around it
+   --------------------------------------------------------------------------- */
+
+export const FAMILY_NAME = 'Батболдын ураг';
+
+export const VIEWER = { name: 'Ану', avatarUrl: null };
+
+const PEOPLE = [
+  ['Батболд', '1942 – 2010', 1],
+  ['Сарантуяа', '1945 –', 1],
+  ['Эрдэнэбат', '1968 –', 2],
+  ['Алтантуяа', '1970 –', 2],
+  ['Мөнхбат', '1972 –', 2],
+  ['Уянга', '1975 –', 3],
+  ['Батзориг', '1995 –', 3],
+  ['Намуун', '1998 –', 4],
+] as const;
+
+export const HOME_GALLERY = PEOPLE.map(([name, meta], index) => ({
+  id: `person-${index}`,
+  href: '#',
+  name,
+  meta,
+  src: PHOTOS[index % PHOTOS.length] ?? null,
+}));
+
+export const HOME_BANDS = [1, 2, 3].map((generation) => ({
+  key: `generation-${generation}`,
+  label: `${generation}-р үе`,
+  overflow: generation === 3 ? 4 : 0,
+  units: PEOPLE.filter((person) => person[2] === generation || generation === 3)
+    .slice(0, 3)
+    .map(([name, meta], index) => ({
+      id: `unit-${generation}-${index}`,
+      href: '#',
+      people: [
+        {
+          id: `p-${generation}-${index}`,
+          name,
+          year: meta.slice(0, 4),
+          photoUrl: PHOTOS[index % PHOTOS.length] ?? null,
+          initial: name.slice(0, 1),
+        },
+      ],
+    })),
+}));
+
+export const HOME_WALL = PHOTOS.slice(0, 6).map((src, index) => ({
+  id: `wall-${index}`,
+  href: '#',
+  src,
+  title: ['Наадам', 'Хаврын цагаалган', 'Хөдөө', 'Төрсөн өдөр', 'Хурим', 'Сургууль'][index] ?? 'Дурсамж',
+  meta: `${1998 + index * 4}`,
+}));
+
+export const HOME_VOICES = [
+  { id: 'v1', href: '#', subject: 'Сарантуяа', title: 'Амьдралын түүх', meta: '14/20 асуулт' },
+  { id: 'v2', href: '#', subject: 'Эрдэнэбат', title: 'Хөдөөгийн жилүүд', meta: '6/20 асуулт' },
+];
+
+export const HOME_NEWS = [
+  { id: 'n1', action: 'Шинэ дурсамж нэмлээ', actorName: 'Уянга', when: '2 цагийн өмнө', href: '#' },
+  { id: 'n2', action: 'Зураг тэмдэглэлээ', actorName: 'Батзориг', when: 'өчигдөр', href: '#' },
+];
+
+export const HOME_COUPLE = {
+  names: ['Билэг', 'Сараа'] as [string, string],
+  together: '12 жил хамт',
+  counts: { memories: 34, letters: 8, places: 5 },
+  waiting: false,
+};

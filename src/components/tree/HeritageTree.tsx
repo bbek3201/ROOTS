@@ -48,6 +48,7 @@ export function HeritageTree({
   deeper,
   canEdit,
   hasStory,
+  meta,
   children,
 }: {
   levels: HeritageLevel[];
@@ -55,6 +56,8 @@ export function HeritageTree({
   deeper: number;
   canEdit: boolean;
   hasStory: boolean;
+  /** "7 үе · 128 хүн" — what the tree below actually holds. */
+  meta: string;
   /** The pan-and-zoom canvas, revealed by the action bar. */
   children: ReactNode;
 }) {
@@ -62,20 +65,39 @@ export function HeritageTree({
 
   return (
     <div className="heritage">
-      {/* ================= Header ========================================= */}
-      <section className="ed-shell pt-16 pb-12 text-center sm:pt-24">
-        <p aria-hidden="true" className="text-2xl">✨ 🌳 ✨</p>
+      {/* ================= Header =========================================
+          The title, what the tree holds, and the switch between the two ways
+          of reading it — all on one line, the way a page of a book is titled.
+          It used to be a centred masthead with a quotation under it, which is
+          how a chapter opens rather than how a working view does; this is a
+          view people come back to twenty times. */}
+      <section className="rt-gutters flex flex-wrap items-end justify-between gap-x-6 gap-y-5 pt-9 pb-7">
+        <div>
+          <h2 className="ed-display ed-display-md text-[var(--hx-text)]">Гэр бүлийн мод</h2>
+          <p className="mt-2 text-[0.92rem] text-[var(--hx-muted)]">{meta}</p>
+        </div>
 
-        <h2 className="ed-display ed-display-lg mx-auto mt-6 max-w-[20ch] text-balance text-[var(--hx-text)]">
-          Бидний үеийн үндэс
-        </h2>
+        {levels.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="rt-segment" role="group" aria-label="Модыг харах хэлбэр">
+              <button type="button" onClick={() => setCanvasOpen(false)} data-on={!canvasOpen}>
+                Удам
+              </button>
+              <button type="button" onClick={() => setCanvasOpen(true)} data-on={canvasOpen}>
+                Бүтэн мод
+              </button>
+            </div>
 
-        <p className="mx-auto mt-6 max-w-[42ch] text-[1.05rem] leading-relaxed text-[var(--hx-muted)]">
-          “Хоёрын түүх эхэлсэн газраас олон үеийн замнал уулзана.”
-        </p>
+            {canEdit ? (
+              <Link href="/family/add-person" className="rt-chip">
+                Хүн нэмэх
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
-      <div className="ed-shell">
+      <div className="rt-gutters">
         <hr className="border-t border-[var(--hx-hair)]" />
       </div>
 
@@ -85,8 +107,7 @@ export function HeritageTree({
           like the room it is going to fill — and the first person is added from
           the same screen the tree will appear on, not from a different one. */}
       {levels.length === 0 ? (
-        <section className="ed-shell py-20 text-center lg:py-28">
-          <p aria-hidden="true" className="text-3xl">🌱</p>
+        <section className="rt-gutters py-20 text-center lg:py-28">
           <h3 className="ed-display ed-display-md mx-auto mt-6 max-w-[20ch] text-balance text-[var(--hx-text)]">
             Энэ мод хараахан ургаагүй байна
           </h3>
@@ -96,19 +117,17 @@ export function HeritageTree({
           </p>
           {canEdit ? (
             <Link href="/family/add-person" className="hx-btn mt-8">
-              <span aria-hidden="true">✨</span> Эхний хүнээ нэмэх
+              Эхний хүнээ нэмэх
             </Link>
           ) : null}
         </section>
       ) : null}
 
       {/* ================= The bands ====================================== */}
-      <section className={levels.length === 0 ? 'hidden' : 'ed-shell py-14 lg:py-20'}>
+      <section className={levels.length === 0 || canvasOpen ? 'hidden' : 'rt-gutters py-10 lg:py-14'}>
         {levels.map((level, position) => (
           <div key={level.depth}>
-            <p className="hx-eyebrow">
-              [ {level.label} ] <span aria-hidden="true">{level.mark}</span>
-            </p>
+            <p className="hx-eyebrow">{level.label}</p>
 
             {/* Two across on anything wider than a phone, because a couple is
                 one unit and splitting the pair onto two rows misstates the
@@ -177,60 +196,45 @@ export function HeritageTree({
             <div aria-hidden="true" className="mx-auto mb-7 flex flex-col items-center">
               <span className="hx-thread h-14" />
             </div>
-            <p className="hx-eyebrow">[ Гүн үндэс ]</p>
+            <p className="hx-eyebrow">Гүн үндэс</p>
             <p className="mx-auto mt-4 max-w-[36ch] text-[var(--hx-muted)]">
               Дээш нь бүртгэгдсэн бас {deeper} хүн байна.
             </p>
-            <button
-              type="button"
-              onClick={() => setCanvasOpen(true)}
-              className="hx-btn mt-6"
-            >
-              <span aria-hidden="true">✨</span> Гүн удмаа дэлгэх
+            <button type="button" onClick={() => setCanvasOpen(true)} className="hx-btn mt-6">
+              Гүн удмаа дэлгэх
             </button>
           </div>
         ) : null}
       </section>
 
-      <div className="ed-shell">
+      {/* ================= The canvas ===================================== */}
+      {/* Kept, not replaced. The bands answer "who am I from"; the canvas
+          answers "what shape is this family", and a family of ninety needs
+          both. It is the second state of the segmented control rather than a
+          drawer, because a pan-and-zoom surface opening UNDER a page eats every
+          scroll gesture that lands in it. */}
+      {canvasOpen ? (
+        <section className="rt-gutters py-8 lg:py-10">
+          <div
+            id="heritage-canvas"
+            className="relative h-[clamp(28rem,72svh,50rem)] overflow-hidden rounded-[22px] border border-[color-mix(in_srgb,#183b32_9%,transparent)] bg-[#fffcf8]"
+          >
+            {children}
+          </div>
+        </section>
+      ) : null}
+
+      <div className="rt-gutters">
         <hr className="border-t border-[var(--hx-hair)]" />
       </div>
 
-      {/* ================= The canvas, on request ========================= */}
-      {/* Kept, not replaced. Bands answer "who am I from"; the canvas answers
-          "what shape is this family", and a family of ninety needs both. It is
-          closed by default because a pan-and-zoom surface that opens under a
-          thumb eats the page's scroll. */}
-      <section className="ed-shell py-14 lg:py-20">
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {levels.length > 0 ? (
-            <button type="button" onClick={() => setCanvasOpen((open) => !open)} className="hx-btn">
-              <span aria-hidden="true">🔍</span> {canvasOpen ? 'Модыг хаах' : 'Бүтэн мод'}
-            </button>
-          ) : null}
-
-          {canEdit ? (
-            <Link href="/family/add-person" className="hx-btn">
-              <span aria-hidden="true">➕</span> Хүн нэмэх
-            </Link>
-          ) : null}
-
-          <Link href="/family/story" className="hx-btn">
-            <span aria-hidden="true">📜</span> {hasStory ? 'Гэр бүлийн түүх' : 'Түүхээ бичих'}
-          </Link>
-        </div>
-
-        {canvasOpen ? (
-          <div
-            id="heritage-canvas"
-            className="relative mt-10 h-[clamp(28rem,74svh,52rem)] overflow-hidden rounded-[24px] border border-[color-mix(in_srgb,#d4af37_22%,transparent)] bg-[#fffcf8]"
-          >
-            {/* The canvas keeps its own warm ground: it is a drawing on paper,
-                and recolouring 1300 lines of it for one surrounding surface
-                would be a second tree to maintain. */}
-            {children}
-          </div>
-        ) : null}
+      <section className="rt-gutters flex flex-wrap items-center gap-3 py-8">
+        <Link href="/family/story" className="hx-btn">
+          {hasStory ? 'Гэр бүлийн түүх' : 'Түүхээ бичих'}
+        </Link>
+        <Link href="/timeline" className="hx-btn">
+          Он цагийн хэлхээ
+        </Link>
       </section>
     </div>
   );
@@ -241,8 +245,7 @@ function Person({ person }: { person: HeritagePerson }) {
     <span className="flex min-w-0 flex-1 items-center gap-3">
       <Portrait person={person} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[1.02rem] font-medium text-[var(--hx-text)]">
-          <span aria-hidden="true" className="mr-1 text-[var(--hx-gold)]">✨</span>
+        <span className="block truncate font-display text-[1.05rem] text-[var(--hx-text)]">
           {person.name}
         </span>
         {person.years ? (

@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
+import { PagePlate } from '@/components/nav/AppShell';
+import { Rail, RailCard, RailRow, RailCta } from '@/components/nav/Rail';
+import { ArrowRightIcon, BookIcon, ImageIcon, MicIcon } from '@/components/icons';
 import { Plate } from '@/components/home/Plate';
 import { Lineage, type LineageBand } from '@/components/home/Lineage';
 import { Mosaic, type MosaicItem } from '@/components/home/Mosaic';
@@ -88,143 +91,121 @@ export function FamilyHome({
   closingSrc,
 }: FamilyHomeProps) {
   return (
-    <main id="main">
+    <>
+      <PagePlate>
       {/* ================= Hero ============================================ */}
       {/* One photograph, the width of the screen, and four lines of type over
           it. A family album opens on a picture of the family — not on a
           two-column marketing layout — and everything the page can say about
           itself is worth less than the first face someone recognises. */}
-      <section className="relative">
-        <div className="relative isolate flex min-h-[clamp(30rem,82svh,46rem)] items-end overflow-hidden">
+      {/* The opening spread: the headline on paper, one photograph beside it.
+
+          It used to be a full-bleed picture with the type laid over it, which
+          is how a marketing site opens. This is not a marketing site — it is
+          the first page of the family's own album, and an album opens on a
+          plate with a caption beside it, not on a poster. Setting the headline
+          on paper also means it is legible whatever photograph the family
+          chose, instead of depending on that photograph having a dark half. */}
+      <section className="grid gap-10 px-5 pt-7 pb-10 sm:px-9 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-center lg:gap-12 lg:px-12 lg:pt-12 lg:pb-14">
+        <div>
+          <p className="ed-eyebrow">Гэр бүлийн модноос ч илүү</p>
+
+          <h1 className="ed-display mt-5 text-[clamp(2.4rem,3.4vw,3.5rem)]">
+            Танай гэр бүл.
+            <br />
+            Үүрд.
+          </h1>
+
+          <p className="ed-lead mt-6">
+            Хүмүүс, дурсамж, зураг, дуу хоолой, түүхээ — {generations > 0 ? `${generations} үеийн` : 'үе улирсан'}{' '}
+            туршид нэг архивт хадгална.
+          </p>
+
+          <div className="mt-9 flex flex-wrap items-center gap-3">
+            <Link href="/family/tree" className="ed-btn ed-btn-primary px-7">
+              Гэр бүлээ судлах
+              <ArrowRightIcon size={18} />
+            </Link>
+            <Link href="/memories/new" className="ed-btn ed-btn-ghost px-6">
+              Дурсамж нэмэх
+            </Link>
+          </div>
+        </div>
+
+        {/* The plate. The italic line over it is the album's own voice — the
+            same voice as the pull-quote in the sidebar — and it is the only
+            text on the page allowed to sit on a photograph. */}
+        <figure className="ed-frame relative isolate aspect-4/3 lg:aspect-3/2">
           {hero[0]?.src ? (
             // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
-            <img
-              src={hero[0].src}
-              alt={hero[0].alt}
-              fetchPriority="high"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          ) : (
+            <img src={hero[0].src} alt={hero[0].alt} fetchPriority="high" />
+          ) : null}
+
+          {hero[0]?.src ? (
             <span
               aria-hidden="true"
-              className="absolute inset-0 bg-gradient-to-br from-[#f7f2e9] via-[#e7ecdf] to-[#cddbcf]"
+              className="absolute inset-0 bg-gradient-to-t from-[rgb(10_26_21/0.6)] via-[rgb(10_26_21/0.12)] to-transparent"
             />
-          )}
-
-          {/* Late, gentle, and only in the lower half: faces stay untouched. */}
-          <span
-            aria-hidden="true"
-            className={
-              hero[0]?.src
-                ? 'absolute inset-0 bg-gradient-to-t from-[rgb(10_26_21/0.86)] via-[rgb(10_26_21/0.42)] to-transparent'
-                : 'absolute inset-0 bg-gradient-to-t from-[rgb(255_252_248/0.9)] to-transparent'
-            }
-          />
-
-          <div className="ed-shell relative w-full pb-14 pt-28 sm:pb-20 lg:pb-24">
-            <p
-              className={
-                hero[0]?.src
-                  ? 'text-[0.7rem] font-medium uppercase tracking-[0.34em] text-[rgb(251_249_244/0.72)]'
-                  : 'ed-eyebrow'
-              }
-            >
-              Roots · {familyName}
-            </p>
-
-            <h1
-              className={cn(
-                'ed-display ed-display-xl mt-6 max-w-[14ch]',
-                hero[0]?.src && 'text-[#fbf9f4]',
-              )}
-            >
-              Танай гэр бүл.
-              <br />
-              Танай түүхүүд.
-              <br />
-              Танай өв.
-            </h1>
-
-            <p
-              className={cn(
-                'ed-lead mt-7',
-                hero[0]?.src && 'text-[rgb(251_249_244/0.82)]',
-              )}
-            >
-              Үеийг холбодог хүмүүс, дурсамж, түүхийг хамтдаа хадгалъя.
-            </p>
-
-            <div className="mt-10 flex flex-wrap items-center gap-4">
-              <Link
-                href="/family/tree"
-                className={cn(
-                  'ed-btn',
-                  hero[0]?.src
-                    ? 'bg-[#fbf9f4] text-[#183b32] hover:bg-white'
-                    : 'ed-btn-primary',
-                )}
-              >
-                Гэр бүлээ судлах
-              </Link>
-              <Link
-                href="/memories/new"
-                className={cn(
-                  'ed-btn',
-                  hero[0]?.src
-                    ? 'border-white/35 text-[#fbf9f4] hover:bg-white/10'
-                    : 'ed-btn-ghost',
-                )}
-              >
-                Дурсамж нэмэх
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* The two supporting prints and the count of what is in the archive —
-            on paper, under the photograph, the way a caption sits under a plate. */}
-        <div className="ed-shell grid grid-cols-1 gap-12 pt-14 pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:gap-20 lg:pt-20 lg:pb-28">
-          <div>
-            {heroCaption ? <p className="ed-eyebrow">{heroCaption}</p> : null}
-            <p className="ed-lead mt-6 text-[1.15rem] sm:text-[1.35rem]">
-              Долоон үеийг нэг архивт. Хос болгон, хүүхэд болгон, дуу хоолой болгон
-              өөрийн байрандаа.
-            </p>
-
-            {!isEmpty ? (
-              <dl className="mt-12 flex flex-wrap gap-x-10 gap-y-7 sm:gap-x-14">
-                <Stat value={generations} label="үе" />
-                <Stat value={stats.people} label="хүн" />
-                <Stat value={stats.memories} label="дурсамж" />
-                <Stat value={stats.media} label="зураг, бичлэг" />
-              </dl>
-            ) : null}
-          </div>
-
-          {hero.length > 1 ? (
-            <div className="grid min-w-0 grid-cols-2 gap-4 sm:gap-5">
-              <Plate
-                src={hero[1]?.src ?? null}
-                alt={hero[1]?.alt ?? familyName}
-                initial={hero[1]?.initial ?? familyName.slice(0, 1)}
-                className="aspect-4/5 rounded-[26px]"
-              />
-              <Plate
-                src={hero[2]?.src ?? null}
-                alt={hero[2]?.alt ?? familyName}
-                initial={hero[2]?.initial ?? familyName.slice(0, 1)}
-                className="aspect-4/5 translate-y-8 rounded-[26px]"
-              />
-            </div>
           ) : null}
-        </div>
+
+          <figcaption
+            className={cn(
+              'absolute bottom-5 left-6 right-6 font-serif text-[1.02rem] italic leading-snug',
+              hero[0]?.src ? 'text-[#f6f2ea]' : 'text-[color-mix(in_srgb,#183b32_62%,transparent)]',
+            )}
+          >
+            {heroCaption ?? 'Бидний түүх үргэлжилсээр…'}
+            <span
+              aria-hidden="true"
+              className={cn(
+                'mt-2.5 block w-9 border-t',
+                hero[0]?.src
+                  ? 'border-[rgb(246_242_234/0.55)]'
+                  : 'border-[color-mix(in_srgb,#183b32_28%,transparent)]',
+              )}
+            />
+          </figcaption>
+        </figure>
       </section>
+
+      {/* What is actually in the archive, stated as four numbers under the
+          spread — a caption to the whole page rather than to one plate. */}
+      {!isEmpty ? (
+        <section className="border-t border-[color-mix(in_srgb,#183b32_7%,transparent)] px-5 py-8 sm:px-9 lg:px-12">
+          <dl className="flex flex-wrap gap-x-12 gap-y-6 sm:gap-x-16">
+            <Stat value={generations} label="үе" />
+            <Stat value={stats.people} label="хүн" />
+            <Stat value={stats.memories} label="дурсамж" />
+            <Stat value={stats.media} label="зураг, бичлэг" />
+          </dl>
+        </section>
+      ) : null}
+
+      {/* The two supporting prints, if the archive has more than one picture. */}
+      {hero.length > 1 ? (
+        <section className="px-5 pb-12 sm:px-9 lg:px-12">
+          <div className="grid grid-cols-2 gap-4 sm:max-w-lg sm:gap-5">
+            <Plate
+              src={hero[1]?.src ?? null}
+              alt={hero[1]?.alt ?? familyName}
+              initial={hero[1]?.initial ?? familyName.slice(0, 1)}
+              className="aspect-4/5 rounded-[22px]"
+            />
+            <Plate
+              src={hero[2]?.src ?? null}
+              alt={hero[2]?.alt ?? familyName}
+              initial={hero[2]?.initial ?? familyName.slice(0, 1)}
+              className="aspect-4/5 translate-y-6 rounded-[22px]"
+            />
+          </div>
+        </section>
+      ) : null}
 
       {/* ================= Since you last looked =========================== */}
       <News entries={news} />
 
       {isEmpty ? (
-        <section className="ed-shell pb-28">
+        <section className="rt-gutters pb-28">
           <div className="ed-band-sage rounded-[32px] px-8 py-16 text-center sm:px-16 sm:py-24">
             <h2 className="ed-display ed-display-lg">Архив хоосон байна.</h2>
             <p className="ed-lead mx-auto mt-6">
@@ -246,7 +227,7 @@ export function FamilyHome({
       {/* ================= Lineage ========================================= */}
       {bands.length > 0 ? (
         <section className="ed-band-cream py-20 lg:py-28">
-          <div className="ed-shell">
+          <div className="rt-gutters">
             <header className="mx-auto max-w-2xl text-center">
               <p className="ed-eyebrow">Lineage</p>
               <h2 className="ed-display ed-display-lg mt-6">
@@ -270,7 +251,7 @@ export function FamilyHome({
       {/* ================= The wall ======================================== */}
       {wall.length > 0 ? (
         <section className="py-20 lg:py-28">
-          <div className="ed-shell">
+          <div className="rt-gutters">
             <header className="flex flex-wrap items-end justify-between gap-6">
               <div>
                 <p className="ed-eyebrow">Moments</p>
@@ -289,7 +270,7 @@ export function FamilyHome({
       {/* ================= People ========================================== */}
       {gallery.length > 0 ? (
         <section className="pb-20 lg:pb-28">
-          <div className="ed-shell">
+          <div className="rt-gutters">
             <header className="max-w-2xl">
               <p className="ed-eyebrow">People</p>
               <h2 className="ed-display ed-display-lg mt-6">Хүн бүрд өөрийн түүх бий.</h2>
@@ -319,7 +300,7 @@ export function FamilyHome({
 
       {/* ================= Voices ========================================== */}
       <section className="ed-band-sage py-20 lg:py-28">
-        <div className="ed-shell">
+        <div className="rt-gutters">
           <div className="grid grid-cols-1 gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-24">
             <header>
               <p className="ed-eyebrow">Voices</p>
@@ -351,7 +332,7 @@ export function FamilyHome({
       </section>
 
       {/* ================= Closing ========================================= */}
-      <section className="ed-shell py-20 lg:py-28">
+      <section className="rt-gutters py-20 lg:py-28">
         <div className="ed-frame relative isolate flex min-h-[26rem] items-end overflow-hidden rounded-[36px] lg:min-h-[34rem]">
           {closingSrc ? (
             // eslint-disable-next-line @next/next/no-img-element -- signed URL, expires.
@@ -392,10 +373,74 @@ export function FamilyHome({
         </div>
       </section>
 
-      <footer className="ed-shell ed-hair py-10">
-        <p className="ed-eyebrow">Roots · {familyName}</p>
-      </footer>
-    </main>
+        <footer className="ed-hair px-5 py-9 sm:px-9 lg:px-12">
+          <p className="ed-eyebrow">Roots · {familyName}</p>
+        </footer>
+      </PagePlate>
+
+      {/* ================= The rail ======================================== */}
+      {/* Everything the page is NOT about. See components/nav/Rail. */}
+      <Rail>
+        {couple ? (
+          <RailCard title="Хоёулаа" href="/us" linkLabel="Орох">
+            <div className="px-5 pb-5">
+              <p className="font-display text-[1.15rem] text-ink">
+                {couple.names[0]} ба {couple.names[1]}
+              </p>
+              <p className="ed-meta mt-1.5">{couple.together}</p>
+              <dl className="mt-4 flex gap-6">
+                <RailStat value={couple.counts.memories} label="дурсамж" />
+                <RailStat value={couple.counts.letters} label="захидал" />
+                <RailStat value={couple.counts.places} label="газар" />
+              </dl>
+              {couple.waiting ? (
+                <p className="mt-4 rounded-xl bg-[color-mix(in_srgb,#f7f2e9_80%,transparent)] px-3.5 py-2.5 text-xs text-ink-soft">
+                  Танай хүн хараахан нэгдээгүй байна.
+                </p>
+              ) : null}
+            </div>
+          </RailCard>
+        ) : null}
+
+        <div className="rt-rail-card overflow-hidden">
+          <RailRow
+            href="/memories"
+            icon={ImageIcon}
+            title="Зураг ба бичлэг"
+            note={stats.media > 0 ? `${stats.media} файл` : 'Хараахан алга'}
+          />
+          <RailRow
+            href="/interview"
+            icon={MicIcon}
+            title="Дуу хоолойн архив"
+            note="Ахмадуудынхаа түүхийг сонс"
+          />
+          <RailRow
+            href="/timeline"
+            icon={BookIcon}
+            title="Гэр бүлийн он цаг"
+            note={generations > 0 ? `${generations} үе` : 'Эхлэл'}
+          />
+        </div>
+
+        <RailCta href="/memories/new">
+          Өнөөдрийг маргаашийн
+          <br />
+          төлөө хадгал
+        </RailCta>
+      </Rail>
+    </>
+  );
+}
+
+/** A number in the rail: small, because the rail is an aside, not a report. */
+function RailStat({ value, label }: { value: number; label: string }) {
+  return (
+    <div>
+      <dt className="sr-only-text">{label}</dt>
+      <dd className="font-display text-[1.3rem] leading-none text-ink">{value}</dd>
+      <p className="ed-eyebrow mt-1.5">{label}</p>
+    </div>
   );
 }
 

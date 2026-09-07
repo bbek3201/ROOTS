@@ -49,7 +49,7 @@ export default async function FamilyStoryPage() {
               : 'absolute inset-0 bg-gradient-to-t from-[rgb(255_252_248/0.9)] to-transparent'
           }
         />
-        <div className="ed-shell relative w-full pb-10 pt-20">
+        <div className="rt-gutters relative w-full pb-10 pt-20">
           <p
             className={
               coverUrl
@@ -65,7 +65,7 @@ export default async function FamilyStoryPage() {
         </div>
       </section>
 
-      <section className="ed-shell pt-12">
+      <section className="rt-gutters pt-12">
         {story ? (
           <div className="max-w-[62ch] whitespace-pre-line text-[1.12rem] leading-[1.8] text-[color-mix(in_srgb,#183b32_84%,transparent)]">
             {story}
