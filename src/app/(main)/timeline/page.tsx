@@ -1,12 +1,17 @@
 import Link from 'next/link';
 import { requireActiveFamily } from '@/lib/family-context';
-import { getFamilyGraph } from '@/lib/data/family';
+import { getFamilyGraph, getMediaPaths } from '@/lib/data/family';
 import { listMemories } from '@/lib/data/memories';
 import { getFamilyTimeline } from '@/lib/data/timeline';
 import { getSignedUrls } from '@/lib/media/storage';
-import { FamilyChronicle, type ChronicleEntry } from '@/components/timeline/FamilyChronicle';
+import {
+  FamilyChronicle,
+  type ChronicleEntry,
+  type ChroniclePerson,
+} from '@/components/timeline/FamilyChronicle';
 import { displayName, yearOf } from '@/lib/format';
 import type { MemoryRow } from '@/types/database';
+import type { PersonNode } from '@/lib/relationships/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +38,44 @@ export default async function TimelinePage() {
   const people = new Map(graph.people.map((person) => [person.id, person]));
   const entries: ChronicleEntry[] = [];
 
+  // ---- every picture on the page, signed once ----------------------------
+  // The chronicle shows two kinds: the cover of a memory, and the portraits of
+  // whoever an event happened to. Both are resolved here, before a single entry
+  // is built, so the page still makes ONE signing round trip however many
+  // hundred rows the family's history turns out to be.
+  const memories = memoryList.memories as unknown as Array<
+    MemoryRow & { media?: Array<{ kind: string; variant: string; storage_path: string }> }
+  >;
+
+  const coverPaths = new Map<string, string>();
+  for (const memory of memories) {
+    const cover = (memory.media ?? []).find(
+      (item) => item.kind === 'photo' && item.variant === 'original',
+    );
+    if (cover) coverPaths.set(memory.id, cover.storage_path);
+  }
+
+  const portraitPaths = await getMediaPaths(
+    graph.people.map((person) => person.profile_photo_media_id),
+  );
+
+  const signed = await getSignedUrls([...coverPaths.values(), ...portraitPaths.values()]);
+
+  /** A person, as the chronicle shows them: a face, or the initial standing in. */
+  const faceOf = (person: PersonNode): ChroniclePerson => {
+    const path = person.profile_photo_media_id
+      ? portraitPaths.get(person.profile_photo_media_id)
+      : null;
+    const name = displayName(person);
+    return {
+      id: person.id,
+      name,
+      photoUrl: path ? (signed.get(path) ?? null) : null,
+      initial: name.slice(0, 1),
+      href: `/person/${person.id}`,
+    };
+  };
+
   // ---- what the graph already knows -------------------------------------
   for (const couple of graph.couples) {
     const year = yearOf(couple.marriage_date ?? couple.relationship_start);
@@ -47,6 +90,9 @@ export default async function TimelinePage() {
       title: b ? `${displayName(a)} ба ${displayName(b)} гэр бүл болов` : `${displayName(a)}-н гэр бүл`,
       description: null,
       href: `/couple/${couple.id}`,
+      // Both of them, with the heart between — a marriage is one event about
+      // two people, and showing one face would be picking a side.
+      people: b ? [faceOf(a), faceOf(b)] : [faceOf(a)],
     });
   }
 
@@ -60,6 +106,7 @@ export default async function TimelinePage() {
         title: `${displayName(person)} мэндэлсэн`,
         description: person.occupation,
         href: `/person/${person.id}`,
+        people: [faceOf(person)],
       });
     }
     const died = yearOf(person.death_date);
@@ -71,6 +118,7 @@ export default async function TimelinePage() {
         title: `${displayName(person)} тэнгэрт халив`,
         description: null,
         href: `/person/${person.id}`,
+        people: [faceOf(person)],
       });
     }
   }
@@ -89,19 +137,6 @@ export default async function TimelinePage() {
   }
 
   // ---- memories, with their photographs ----------------------------------
-  const memories = memoryList.memories as unknown as Array<
-    MemoryRow & { media?: Array<{ kind: string; variant: string; storage_path: string }> }
-  >;
-
-  const coverPaths = new Map<string, string>();
-  for (const memory of memories) {
-    const cover = (memory.media ?? []).find(
-      (item) => item.kind === 'photo' && item.variant === 'original',
-    );
-    if (cover) coverPaths.set(memory.id, cover.storage_path);
-  }
-  const signed = await getSignedUrls([...coverPaths.values()]);
-
   for (const memory of memories) {
     const path = coverPaths.get(memory.id);
     const src = path ? signed.get(path) : null;

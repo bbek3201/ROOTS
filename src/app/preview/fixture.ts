@@ -339,14 +339,65 @@ export const HOME_COUPLE = {
   waiting: false,
 };
 
-/** The family chronicle, as the timeline assembles it from the graph. */
+/**
+ * The family chronicle, as the timeline assembles it from the graph.
+ *
+ * Every shape the page has to hold is in here on purpose: a birth with a
+ * portrait and one without, a marriage (two faces and a heart), a memory with
+ * a landscape plate, a death, and two entries sharing one year — which is the
+ * case that decides whether the sticky year in the margin reads correctly.
+ */
 export const FAMILY_TIMELINE = [
-  { year: '1918', kind: 'birth', title: 'Дамдин мэндэлсэн', description: 'Архангай, Их тамир' },
-  { year: '1942', kind: 'birth', title: 'Батболд мэндэлсэн', description: null },
-  { year: '1968', kind: 'marriage', title: 'Батболд ба Сарантуяа гэр бүл болов', description: null },
-  { year: '1974', kind: 'memory', title: 'Их тамирын сургуулийн багш нар', description: 'Уянгагийн олж ирсэн зураг' },
-  { year: '1979', kind: 'memory', title: 'Улаанбаатар руу нүүсэн зун', description: null },
-  { year: '1994', kind: 'death', title: 'Дамдин тэнгэрт халив', description: null },
-  { year: '2010', kind: 'death', title: 'Батболд тэнгэрт халив', description: null },
-  { year: '2025', kind: 'birth', title: 'Ануужин мэндэлсэн', description: 'Долоо дахь үе' },
+  {
+    id: 't1', year: '1918', kind: 'birth', description: 'Малчин · Их тамир',
+    title: 'Дамдин мэндэлсэн',
+    // The oldest generation, photographed by nobody. The normal case.
+    people: [{ id: 'f1', name: 'Дамдин', photoUrl: null, initial: 'Д', href: '#' }],
+  },
+  {
+    id: 't2', year: '1942', kind: 'birth', description: null,
+    title: 'Батболд мэндэлсэн',
+    people: [{ id: 'f2', name: 'Батболд', photoUrl: PHOTOS[5]!, initial: 'Б', href: '#' }],
+  },
+  {
+    id: 't3', year: '1968', kind: 'marriage', description: null,
+    title: 'Батболд ба Сарантуяа гэр бүл болов',
+    people: [
+      { id: 'f3', name: 'Батболд', photoUrl: PHOTOS[5]!, initial: 'Б', href: '#' },
+      { id: 'f4', name: 'Сарантуяа', photoUrl: null, initial: 'С', href: '#' },
+    ],
+  },
+  {
+    id: 't4', year: '1974', kind: 'memory',
+    title: 'Их тамирын сургуулийн багш нар',
+    description: 'Уянгагийн 2019 онд хөдөөнөөс олж ирээд сканердсан зураг.',
+    photo: { src: SCENES[1]!, alt: 'Их тамирын сургуулийн багш нар' },
+  },
+  {
+    id: 't5', year: '1979', kind: 'memory',
+    title: 'Улаанбаатар руу нүүсэн зун',
+    description: null,
+    photo: { src: SCENES[2]!, alt: 'Улаанбаатар руу нүүсэн зун' },
+  },
+  {
+    id: 't6', year: '1994', kind: 'death', description: null,
+    title: 'Дамдин тэнгэрт халив',
+    people: [{ id: 'f5', name: 'Дамдин', photoUrl: null, initial: 'Д', href: '#' }],
+  },
+  {
+    id: 't7', year: '2010', kind: 'death', description: null,
+    title: 'Батболд тэнгэрт халив',
+    people: [{ id: 'f6', name: 'Батболд', photoUrl: PHOTOS[5]!, initial: 'Б', href: '#' }],
+  },
+  {
+    id: 't8', year: '2025', kind: 'birth', description: 'Долоо дахь үе',
+    title: 'Ануужин мэндэлсэн',
+    people: [{ id: 'f7', name: 'Ануужин', photoUrl: PHOTOS[3]!, initial: 'А', href: '#' }],
+  },
+  {
+    id: 't9', year: '2025', kind: 'memory',
+    title: 'Эмээгийн наян насны ой',
+    description: 'Дөрвөн үе нэг ширээний ард сууж байгаа анхны зураг.',
+    photo: { src: SCENES[3]!, alt: 'Эмээгийн наян насны ой' },
+  },
 ];
