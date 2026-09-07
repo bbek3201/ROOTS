@@ -8,7 +8,7 @@ import {
   HOME_NEWS,
   HOME_VOICES,
   HOME_WALL,
-  PHOTOS,
+  SCENES,
   VIEWER,
 } from '../fixture';
 
@@ -21,15 +21,15 @@ import {
  */
 export default function HomePreview() {
   return (
-    <AppShell viewer={VIEWER} family={FAMILY_NAME} layout="self">
+    <AppShell viewer={VIEWER} family={FAMILY_NAME} vista={SCENES[0]} layout="self">
       <FamilyHome
         familyName={FAMILY_NAME}
         isEmpty={false}
         joinCode="ROOTS-2026"
         generations={7}
         stats={{ people: 128, memories: 64, media: 412 }}
-        hero={PHOTOS.slice(0, 3).map((src) => ({ src, alt: FAMILY_NAME, initial: 'Б' }))}
-        heroCaption="Бидний түүх үргэлжилсээр…"
+        hero={SCENES.slice(0, 3).map((src) => ({ src, alt: FAMILY_NAME, initial: 'Б' }))}
+        heroCaption="1971 · Хуримын дараа, Тамирын голын хөвөөнд"
         bands={HOME_BANDS}
         wall={HOME_WALL}
         gallery={HOME_GALLERY}
@@ -37,7 +37,7 @@ export default function HomePreview() {
         news={HOME_NEWS}
         couple={HOME_COUPLE}
         interview={{ href: '#', label: 'Ярилцлага эхлүүлэх' }}
-        closingSrc={PHOTOS[5] ?? null}
+        closingSrc={SCENES[3] ?? null}
       />
     </AppShell>
   );

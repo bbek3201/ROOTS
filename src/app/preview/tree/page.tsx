@@ -2,18 +2,18 @@ import { AppShell, PagePlate } from '@/components/nav/AppShell';
 import { Rail, RailCard, RailCta, RailRow } from '@/components/nav/Rail';
 import { BookIcon, ImageIcon, MicIcon } from '@/components/icons';
 import { HeritageTree } from '@/components/tree/HeritageTree';
-import { FAMILY_NAME, HERITAGE_LEVELS, HOW_WE_MET, PHOTOS, VIEWER } from '@/app/preview/fixture';
+import { FAMILY_NAME, FAMILY_STORY, HERITAGE_LEVELS, SCENES, VIEWER } from '@/app/preview/fixture';
 
-const META = '4 үе · 12 хүн · 1918 оноос';
+const META = '7 үе · 128 хүн · 1918 оноос';
 
 /** The tree, on the desk, with the rail beside it. */
 export default function PreviewHeritageTree() {
   return (
-    <AppShell viewer={VIEWER} family={FAMILY_NAME} layout="self">
+    <AppShell viewer={VIEWER} family={FAMILY_NAME} vista={SCENES[0]} layout="self">
       <PagePlate>
         <section className="relative isolate flex min-h-[clamp(16rem,42svh,26rem)] items-end overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element -- fixture data URI. */}
-          <img src={PHOTOS[2]} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- fixture file in /public. */}
+          <img src={SCENES[2]} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <span
             aria-hidden="true"
             className="absolute inset-0 bg-gradient-to-t from-[rgb(10_26_21/0.82)] via-[rgb(10_26_21/0.34)] to-transparent"
@@ -38,7 +38,9 @@ export default function PreviewHeritageTree() {
       <Rail>
         <RailCard title="Гэр бүлийн түүх" href="#" linkLabel="Бүтнээр">
           <div className="px-5 pb-5">
-            <p className="text-[0.95rem] leading-relaxed text-ink-soft">{HOW_WE_MET}</p>
+            <p className="whitespace-pre-line text-[0.95rem] leading-relaxed text-ink-soft">
+              {FAMILY_STORY.split('\n\n').slice(0, 2).join('\n\n')}
+            </p>
           </div>
         </RailCard>
 
