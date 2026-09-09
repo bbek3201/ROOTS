@@ -134,26 +134,48 @@ export function HeritageTree({
                 shape of the family. One across on a phone, where two portraits
                 side by side are two thumbnails and neither is a face. */}
             <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:gap-6">
-              {level.cards.map((card) => (
+              {level.cards.map((card) => {
                 // A band holding one couple — almost always the viewer's own —
                 // runs the full width. Left in a half-width column it sits off
                 // to one side with the thread descending past it, which reads
                 // as a missing second card rather than as a single union.
-                <li key={card.id} className={level.cards.length === 1 ? 'sm:col-span-2' : undefined}>
+                const solo = level.cards.length === 1;
+
+                return (
+                <li key={card.id} className={solo ? 'sm:col-span-2' : undefined}>
                   <Link href={card.href} className="hx-card block h-full p-5">
-                    {/* Stacked on a phone, side by side from a tablet up. Two
-                        names in one 390px row truncate to "Б…" and "Га…", and a
-                        family tree that cannot show a name has failed at the
-                        only thing it is for. The heart stays between them in
-                        both orientations, so the pair still reads as one unit. */}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    {/* Two names side by side need a full-width card to survive:
+                        in a half-width column they truncate to "Эрд…" and
+                        "Алт…", and a family tree that cannot show a name has
+                        failed at the only thing it is for. So the pair sits
+                        side by side only in a solo (full-width) band; in a
+                        two-up band the two stack, each with the whole width of
+                        the card for its name. The heart stays between them
+                        either way, so the pair still reads as one unit. */}
+                    <div
+                      className={
+                        solo
+                          ? 'flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'
+                          : 'flex flex-col gap-3'
+                      }
+                    >
                       <Person person={card.people[0]!} />
 
                       {card.paired && card.people[1] ? (
                         <>
+                          {/* Solo (full-width) bands lay the pair side by side,
+                              so the heart sits centred between the two
+                              portraits. Two-up bands stack the pair; there the
+                              heart drops to the portrait column so it still
+                              reads as the link between the faces rather than a
+                              mark adrift in the middle of the card. */}
                           <span
                             aria-hidden="true"
-                            className="self-center text-lg leading-none text-[var(--hx-heart)]"
+                            className={
+                              solo
+                                ? 'self-center text-lg leading-none text-[var(--hx-heart)]'
+                                : 'ml-[0.9rem] self-start text-lg leading-none text-[var(--hx-heart)]'
+                            }
                           >
                             ❤
                           </span>
@@ -173,7 +195,8 @@ export function HeritageTree({
                     </p>
                   </Link>
                 </li>
-              ))}
+                );
+              })}
             </ul>
 
             {/* The thread down to the generation above. Not drawn after the
