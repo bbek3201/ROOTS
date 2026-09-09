@@ -46,6 +46,7 @@ export default async function ProfilePage() {
           somebody in the family rather than about a login. */}
       <header className="flex items-center gap-4">
         {myPortrait ? (
+          // eslint-disable-next-line @next/next/no-img-element -- short-lived signed storage URL, which the Next image optimiser cannot cache.
           <img
             src={myPortrait}
             alt=""

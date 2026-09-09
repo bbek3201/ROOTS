@@ -145,7 +145,7 @@ export function VoiceRoom({ spaceId, notes }: { spaceId: string; notes: VoiceNot
           <>
             <p className="text-sm text-muted">{formatDuration(elapsed)} бичигдлээ</p>
             {localUrl ? (
-              // eslint-disable-next-line jsx-a11y/media-has-caption -- their own voice.
+              /* A family's own voice note; a caption track is neither available nor meaningful here. */
               <audio src={localUrl} controls className="mx-auto mt-3 w-full" />
             ) : null}
             <div className="mt-4">

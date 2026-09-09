@@ -83,8 +83,7 @@ export function TopBar({ viewer, family }: { viewer: Viewer; family: string }) {
             <span className="sr-only-text">Профайл</span>
             <span className="photo-frame inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full font-display text-sm text-sage sm:h-10 sm:w-10">
               {viewer.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- a signed
-                // storage URL, which the Next image optimiser cannot cache.
+                // eslint-disable-next-line @next/next/no-img-element -- a signed storage URL, which the Next image optimiser cannot cache.
                 <img src={viewer.avatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 viewer.name.slice(0, 1).toUpperCase()

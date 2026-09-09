@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { requireActiveFamily } from '@/lib/family-context';
 import { can } from '@/lib/auth/session';
 import { getFamilyGraph, getMediaPaths } from '@/lib/data/family';

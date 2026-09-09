@@ -2,12 +2,12 @@
   "name": "roots",
   "version": "1.0.0",
   "private": true,
-  "description": "ROOTS \u2014 a private digital memory of an entire family.",
+  "description": "ROOTS — a private digital memory of an entire family.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -25,10 +25,13 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.25",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"

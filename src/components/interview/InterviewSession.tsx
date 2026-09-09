@@ -8,7 +8,6 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { MicIcon, PauseIcon, PlayIcon, SparkIcon } from '@/components/icons';
 import { formatDuration } from '@/lib/format';
-import { cn } from '@/lib/cn';
 
 /**
  * The interview session.

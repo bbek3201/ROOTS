@@ -46,8 +46,7 @@ export function Avatar({
       aria-hidden="true"
     >
       {photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- storage URLs are
-        // short-lived signed URLs, which the Next image optimiser cannot cache.
+        // eslint-disable-next-line @next/next/no-img-element -- short-lived signed storage URL, which the Next image optimiser cannot cache.
         <img src={photoUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
       ) : (
         <span>{initials(person)}</span>

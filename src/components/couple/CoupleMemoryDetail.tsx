@@ -88,7 +88,7 @@ export function CoupleMemoryDetail({
           {videos.map((video) => (
             <li key={video.id}>
               {video.url ? (
-                // eslint-disable-next-line jsx-a11y/media-has-caption -- a family's own recording.
+                /* A family's own recording; a caption track is neither available nor meaningful here. */
                 <video src={video.url} controls playsInline className="w-full rounded-2xl border border-line" />
               ) : null}
             </li>

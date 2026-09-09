@@ -62,6 +62,7 @@ export function Sidebar({ vista }: { vista?: string | null }) {
           sage-and-gold wash the class already carries — finished either way,
           never a broken image. */}
       <div className="rt-vista">
+        {/* eslint-disable-next-line @next/next/no-img-element -- a static file in /public, rendered on every page; the optimiser buys nothing here. */}
         {vista ? <img src={vista} alt="" /> : null}
         <p className="rt-quote">
           Өнгөрсөн маань
