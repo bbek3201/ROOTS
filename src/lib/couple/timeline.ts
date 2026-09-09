@@ -59,7 +59,13 @@ export function groupByYear(entries: readonly TimelineEntry[]): TimelineYear[] {
     }));
 }
 
-/** How long they have been together, said the way people say it. */
+/**
+ * How long they have been together, said the way people say it.
+ *
+ * Returns the WHOLE phrase, "хамт" included, so every caller can print it
+ * verbatim. When two of them each appended their own "хамт" the home page read
+ * "12 жил хамт хамт"; the word belongs here, once.
+ */
 export function togetherFor(startedOn: string | null, now = new Date()): string | null {
   if (!startedOn) return null;
   const start = new Date(startedOn);
@@ -75,9 +81,9 @@ export function togetherFor(startedOn: string | null, now = new Date()): string 
   const rest = months % 12;
 
   if (years === 0 && rest === 0) return 'Шинэхэн эхэлж байна';
-  if (years === 0) return `${rest} сар`;
-  if (rest === 0) return `${years} жил`;
-  return `${years} жил ${rest} сар`;
+  if (years === 0) return `${rest} сар хамт`;
+  if (rest === 0) return `${years} жил хамт`;
+  return `${years} жил ${rest} сар хамт`;
 }
 
 /**

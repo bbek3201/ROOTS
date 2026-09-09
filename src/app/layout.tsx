@@ -3,14 +3,14 @@ import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 
 /**
- * One face, self-hosted by next/font at build time.
+ * The metadata voice: a sans, self-hosted by next/font at build time.
  *
  * A family archive is read on bad connections, so nothing here is fetched from
  * a third party at run time: next/font downloads the files during the build and
  * serves them from our own origin, with the metrics inlined so a name never
- * reflows after paint. It carries the Cyrillic subset — the entire product is
- * in Mongolian, and a face that silently falls back for Cyrillic would
- * undo the typography everywhere it matters most.
+ * reflows after paint. Both faces carry the Cyrillic subset — the entire
+ * product is in Mongolian, and a face that silently falls back for Cyrillic
+ * would undo the typography everywhere it matters most.
  */
 const sans = Inter({
   subsets: ['latin', 'cyrillic'],

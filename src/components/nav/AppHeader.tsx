@@ -3,12 +3,18 @@ import { ChevronLeftIcon } from '@/components/icons';
 import type { ReactNode } from 'react';
 
 /**
- * A page title.
+ * A page title — the standing pattern for every inner page.
  *
- * It used to be a sticky bar with its own blurred background, because it was
- * the only header a phone-shaped app had. The site header does that job now,
- * so this went back to being what it always should have been: the opening line
- * of the page, set large, with a way back to where you came from.
+ * The desk (sidebar + top bar) handles getting AROUND the product; this handles
+ * opening a single page: its name set large, and — for a page reached by
+ * drilling into a list — a way back to that list. The two are complementary,
+ * not redundant: the sidebar only knows the six top-level destinations, so on
+ * `/us/letters/[id]` the "Буцах" link to `/us/letters` is the only route back
+ * to the list, at every width.
+ *
+ * The rich pages — the family home and the tree — lay out their own plate and
+ * rail instead (see AppShell's SELF_LAID). Everything else is a reading or
+ * writing surface and opens with this.
  */
 export function AppHeader({
   title,

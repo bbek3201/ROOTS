@@ -334,7 +334,7 @@ export const HOME_NEWS = [
 
 export const HOME_COUPLE = {
   names: ['Билэг', 'Сараа'] as [string, string],
-  together: '2013 оны 6-р сараас — 12 жил хамт',
+  together: '12 жил хамт',
   counts: { memories: 34, letters: 8, places: 5 },
   waiting: false,
 };

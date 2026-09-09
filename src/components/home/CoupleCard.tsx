@@ -34,7 +34,7 @@ export function CoupleCard({ names, together, counts, waiting }: CoupleCardProps
         </h2>
 
         {together ? (
-          <p className="ed-lead mt-4 text-[1.05rem]">{together} хамт</p>
+          <p className="ed-lead mt-4 text-[1.05rem]">{together}</p>
         ) : null}
 
         {waiting ? (

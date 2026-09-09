@@ -32,14 +32,14 @@ describe('togetherFor', () => {
   const now = new Date('2026-09-04T12:00:00Z');
 
   it('counts years and months the way people say them', () => {
-    expect(togetherFor('2025-06-12', now)).toBe('1 жил 2 сар');
-    expect(togetherFor('2024-09-04', now)).toBe('2 жил');
-    expect(togetherFor('2026-06-04', now)).toBe('3 сар');
+    expect(togetherFor('2025-06-12', now)).toBe('1 жил 2 сар хамт');
+    expect(togetherFor('2024-09-04', now)).toBe('2 жил хамт');
+    expect(togetherFor('2026-06-04', now)).toBe('3 сар хамт');
   });
 
   it('does not count a month until the day comes round again', () => {
     // One day short of three months.
-    expect(togetherFor('2026-06-05', now)).toBe('2 сар');
+    expect(togetherFor('2026-06-05', now)).toBe('2 сар хамт');
   });
 
   it('says something kind on the first day rather than "0 сар"', () => {
